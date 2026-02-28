@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Roast My Code Report</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --panel: #161b22;
+      --panel-2: #1f2937;
+      --text: #c9d1d9;
+      --muted: #8b949e;
+      --border: #30363d;
+      --green: #2ea043;
+      --yellow: #d29922;
+      --red: #f85149;
+      --blue: #58a6ff;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 32px 18px 56px;
+      background: radial-gradient(circle at top right, #111827 0%, var(--bg) 55%);
+      color: var(--text);
+      font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .container {
+      max-width: 1120px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: linear-gradient(180deg, #161b22 0%, #121820 100%);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 18px;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.02) inset;
+    }
+
+    h1, h2, h3 { margin: 0 0 12px; }
+    h1 { font-size: 2rem; letter-spacing: 0.02em; }
+    h2 { font-size: 1.35rem; }
+    p { margin: 0; color: var(--muted); }
+
+    .hero {
+      display: grid;
+      gap: 24px;
+      grid-template-columns: 280px 1fr;
+      align-items: center;
+    }
+
+    .score-circle-wrap {
+      position: relative;
+      width: 220px;
+      height: 220px;
+      margin: 0 auto;
+      display: grid;
+      place-items: center;
+    }
+
+    .score-circle {
+      transform: rotate(-90deg);
+      width: 220px;
+      height: 220px;
+    }
+
+    .score-circle .track {
+      fill: none;
+      stroke: #2b3340;
+      stroke-width: 14;
+    }
+
+    .score-circle .value {
+      fill: none;
+      stroke: #f85149;
+      stroke-width: 14;
+      stroke-linecap: round;
+      stroke-dasharray: 565.49;
+      stroke-dashoffset: 344.95;
+      transition: stroke-dashoffset 0.8s ease-out;
+    }
+
+    .score-number {
+      position: absolute;
+      text-align: center;
+    }
+
+    .score-number .big {
+      font-size: 2.9rem;
+      font-weight: 800;
+      line-height: 1;
+      color: #f85149;
+    }
+
+    .score-number .label {
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-top: 6px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .headline {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #facc15;
+      margin-bottom: 12px;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    .meta-item {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+    }
+
+    .meta-item strong { display: block; color: var(--text); font-size: 1rem; }
+    .meta-item span { color: var(--muted); font-size: 0.85rem; }
+
+    .badges {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .badge {
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      color: #0d1117;
+    }
+
+    .roast-list {
+      margin: 14px 0 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 10px;
+    }
+
+    .roast-line {
+      background: #1a1f27;
+      border-left: 3px solid #f97316;
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: #f5f5f5;
+      font-size: 0.95rem;
+    }
+
+    .verdict {
+      display: inline-block;
+      margin-top: 14px;
+      font-size: 1.12rem;
+      font-weight: 800;
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #0f1720;
+    }
+
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 680px;
+    }
+
+    th, td {
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      padding: 10px 10px;
+      font-size: 0.9rem;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 0.82rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    tr:hover td { background: #18202b; }
+
+    .sev-high { color: var(--red); font-weight: 700; }
+    .sev-medium { color: var(--yellow); font-weight: 700; }
+    .sev-low { color: var(--green); font-weight: 700; }
+
+    .share-box {
+      margin-top: 8px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .share-box textarea {
+      width: 100%;
+      min-height: 56px;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #0b1320;
+      color: var(--text);
+      resize: vertical;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.85rem;
+    }
+
+    .copy-btn {
+      justify-self: start;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #111827;
+      color: var(--text);
+      padding: 8px 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .copy-btn:hover { border-color: #4b5563; }
+    .small-note { color: var(--muted); font-size: 0.82rem; margin-top: 8px; }
+
+    @media (max-width: 860px) {
+      .hero { grid-template-columns: 1fr; }
+      .meta-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <section class="card hero">
+      <div class="score-circle-wrap">
+        <svg class="score-circle" viewBox="0 0 220 220" aria-label="Overall score">
+          <circle class="track" cx="110" cy="110" r="90"></circle>
+          <circle class="value" cx="110" cy="110" r="90"></circle>
+        </svg>
+        <div class="score-number">
+          <div class="big">39</div>
+          <div class="label">Overall Score</div>
+        </div>
+      </div>
+      <div>
+        <h1>🔥 Roast My Code</h1>
+        <p>The AI that roasts your codebase so your teammates don't have to.</p>
+        <div class="headline">Codebase: hot mess</div>
+        <div class="meta-grid">
+          <div class="meta-item"><strong>40</strong><span>Scanned Files</span></div>
+          <div class="meta-item"><strong>1570</strong><span>Total Lines</span></div>
+          <div class="meta-item"><strong>19</strong><span>Total Issues</span></div>
+        </div>
+        <div class="badges">
+          
+          <span class="badge" style="background: #f85149;">AI Slop: 0</span>
+          
+          <span class="badge" style="background: #d29922;">Code Quality: 72</span>
+          
+          <span class="badge" style="background: #2ea043;">Style: 88</span>
+          
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>LLM Roast</h2>
+      <ul class="roast-list">
+        
+        <li class="roast-line">🔥 config.py:112: pass the buck, not errors</li>
+        
+        <li class="roast-line">🔥 registry.py:52: comment apocalypse</li>
+        
+        <li class="roast-line">🔥 registry.py:400: 4 lines of useless code</li>
+        
+        <li class="roast-line">🔥 formats.py:16: commented out, not gone</li>
+        
+        <li class="roast-line">🔥 config.py:100: create function is a novel</li>
+        
+        <li class="roast-line">🔥 registry.py: worst file, worst life</li>
+        
+        <li class="roast-line">🔥 Apps class: messy, like your room</li>
+        
+      </ul>
+      <div class="verdict">🔥 BURN IT DOWN</div>
+    </section>
+
+    <section class="card">
+      <h2>Issues</h2>
+      <p style="margin-bottom: 12px;">Click table headers to sort by file, line, severity, or category.</p>
+      <div class="table-wrap">
+        <table id="issues-table">
+          <thead>
+            <tr>
+              <th data-col="0">File</th>
+              <th data-col="1">Line</th>
+              <th data-col="2">Severity</th>
+              <th data-col="3">Category</th>
+              <th data-col="4">Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+            <tr>
+              <td>django/apps/config.py</td>
+              <td>112</td>
+              <td class="sev-high">HIGH</td>
+              <td>AI Slop</td>
+              <td>Empty except block swallows errors with pass.</td>
+            </tr>
+            
+            <tr>
+              <td>django/apps/config.py</td>
+              <td>163</td>
+              <td class="sev-high">HIGH</td>
+              <td>AI Slop</td>
+              <td>Empty except block swallows errors with pass.</td>
+            </tr>
+            
+            <tr>
+              <td>django/apps/registry.py</td>
+              <td>52</td>
+              <td class="sev-high">HIGH</td>
+              <td>AI Slop</td>
+              <td>Commented-out code block appears to span 3 lines.</td>
+            </tr>
+            
+            <tr>
+              <td>django/apps/registry.py</td>
+              <td>400</td>
+              <td class="sev-high">HIGH</td>
+              <td>AI Slop</td>
+              <td>Commented-out code block appears to span 4 lines.</td>
+            </tr>
+            
+            <tr>
+              <td>django/apps/registry.py</td>
+              <td>418</td>
+              <td class="sev-high">HIGH</td>
+              <td>AI Slop</td>
+              <td>Commented-out code block appears to span 3 lines.</td>
+            </tr>
+            
+            <tr>
+              <td>django/conf/locale/ar/formats.py</td>
+              <td>16</td>
+              <td class="sev-high">HIGH</td>
+              <td>AI Slop</td>
+              <td>Commented-out code block appears to span 3 lines.</td>
+            </tr>
+            
+            <tr>
+              <td>django/conf/locale/bg/formats.py</td>
+              <td>16</td>
+              <td class="sev-high">HIGH</td>
+              <td>AI Slop</td>
+              <td>Commented-out code block appears to span 3 lines.</td>
+            </tr>
+            
+            <tr>
+              <td>django/conf/locale/bs/formats.py</td>
+              <td>16</td>
+              <td class="sev-high">HIGH</td>
+              <td>AI Slop</td>
+              <td>Commented-out code block appears to span 3 lines.</td>
+            </tr>
+            
+            <tr>
+              <td>django/conf/locale/ckb/formats.py</td>
+              <td>16</td>
+              <td class="sev-high">HIGH</td>
+              <td>AI Slop</td>
+              <td>Commented-out code block appears to span 3 lines.</td>
+            </tr>
+            
+            <tr>
+              <td>django/apps/config.py</td>
+              <td>100</td>
+              <td class="sev-medium">MEDIUM</td>
+              <td>Code Quality</td>
+              <td>Function `create` exceeds 50 lines.</td>
+            </tr>
+            
+            <tr>
+              <td>django/apps/registry.py</td>
+              <td>-</td>
+              <td class="sev-medium">MEDIUM</td>
+              <td>Code Quality</td>
+              <td>Large file (439 lines) hurts maintainability.</td>
+            </tr>
+            
+            <tr>
+              <td>django/apps/registry.py</td>
+              <td>61</td>
+              <td class="sev-medium">MEDIUM</td>
+              <td>Code Quality</td>
+              <td>Function `populate` exceeds 50 lines.</td>
+            </tr>
+            
+            <tr>
+              <td>django/conf/__init__.py</td>
+              <td>130</td>
+              <td class="sev-medium">MEDIUM</td>
+              <td>Code Quality</td>
+              <td>Hardcoded URL string detected.</td>
+            </tr>
+            
+            <tr>
+              <td>django/apps/config.py</td>
+              <td>62</td>
+              <td class="sev-low">LOW</td>
+              <td>Style</td>
+              <td>Public function `default_auto_field` is missing a docstring.</td>
+            </tr>
+            
+            <tr>
+              <td>django/apps/config.py</td>
+              <td>262</td>
+              <td class="sev-low">LOW</td>
+              <td>Style</td>
+              <td>Public function `import_models` is missing a docstring.</td>
+            </tr>
+            
+            <tr>
+              <td>django/apps/registry.py</td>
+              <td>215</td>
+              <td class="sev-low">LOW</td>
+              <td>Style</td>
+              <td>Public function `register_model` is missing a docstring.</td>
+            </tr>
+            
+            <tr>
+              <td>django/apps/registry.py</td>
+              <td>411</td>
+              <td class="sev-low">LOW</td>
+              <td>Style</td>
+              <td>Public function `apply_next_model` is missing a docstring.</td>
+            </tr>
+            
+            <tr>
+              <td>django/conf/__init__.py</td>
+              <td>197</td>
+              <td class="sev-low">LOW</td>
+              <td>Style</td>
+              <td>Public function `is_overridden` is missing a docstring.</td>
+            </tr>
+            
+            <tr>
+              <td>django/conf/__init__.py</td>
+              <td>243</td>
+              <td class="sev-low">LOW</td>
+              <td>Style</td>
+              <td>Public function `is_overridden` is missing a docstring.</td>
+            </tr>
+            
+          </tbody>
+        </table>
+      </div>
+      <div class="small-note">Rows: 19</div>
+    </section>
+
+    <section class="card">
+      <h2>Share your score</h2>
+      <p>Copy the markdown below to flex or beg for help in your PR.</p>
+      <div class="share-box">
+        <textarea id="badge-markdown" readonly>![Roast Score](https://img.shields.io/badge/Roast_Score-39-red)</textarea>
+        <button class="copy-btn" id="copy-btn" type="button">Copy Badge Markdown</button>
+      </div>
+      <div class="small-note" id="copy-status"></div>
+    </section>
+  </div>
+
+  <script>
+    (function () {
+      const table = document.getElementById("issues-table");
+      const headers = table.querySelectorAll("th");
+      const tbody = table.querySelector("tbody");
+      let sortState = { column: null, asc: true };
+
+      const severityRank = { HIGH: 0, MEDIUM: 1, LOW: 2 };
+
+      function getCellValue(row, index) {
+        return row.children[index].innerText.trim();
+      }
+
+      function compareValues(a, b, index, asc) {
+        const av = getCellValue(a, index);
+        const bv = getCellValue(b, index);
+
+        if (index === 1) {
+          const aNum = av === "-" ? Number.MAX_SAFE_INTEGER : Number(av);
+          const bNum = bv === "-" ? Number.MAX_SAFE_INTEGER : Number(bv);
+          return asc ? aNum - bNum : bNum - aNum;
+        }
+
+        if (index === 2) {
+          const aRank = severityRank[av] ?? 99;
+          const bRank = severityRank[bv] ?? 99;
+          return asc ? aRank - bRank : bRank - aRank;
+        }
+
+        return asc ? av.localeCompare(bv) : bv.localeCompare(av);
+      }
+
+      headers.forEach((header) => {
+        header.addEventListener("click", () => {
+          const col = Number(header.getAttribute("data-col"));
+          const asc = sortState.column === col ? !sortState.asc : true;
+          sortState = { column: col, asc };
+
+          const rows = Array.from(tbody.querySelectorAll("tr"));
+          rows.sort((a, b) => compareValues(a, b, col, asc));
+          rows.forEach((row) => tbody.appendChild(row));
+        });
+      });
+
+      const copyBtn = document.getElementById("copy-btn");
+      const badgeTextarea = document.getElementById("badge-markdown");
+      const copyStatus = document.getElementById("copy-status");
+
+      copyBtn.addEventListener("click", async () => {
+        try {
+          badgeTextarea.select();
+          await navigator.clipboard.writeText(badgeTextarea.value);
+          copyStatus.textContent = "Copied badge markdown.";
+        } catch (err) {
+          copyStatus.textContent = "Copy failed. Select and copy manually.";
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
