@@ -29,3 +29,18 @@ jobs:
 
       - name: CLI smoke test (GitHub URL path)
         run: roast https://github.com/psf/requests --no-llm --max-files 10
+
+      - name: CLI smoke test (LLM: Groq primary + NIM backup)
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          NVIDIA_NIM_API_KEY: ${{ secrets.NVIDIA_NIM_API_KEY }}
+        run: |
+          if [ -z "$GROQ_API_KEY" ] && [ -z "$NVIDIA_NIM_API_KEY" ]; then
+            echo "No LLM secrets configured; skipping LLM smoke test."
+            exit 0
+          fi
+          roast . --max-files 8 \
+            --provider auto \
+            --model llama-3.3-70b-versatile \
+            --backup-provider nim \
+            --backup-model microsoft/phi-4-mini-instruct
