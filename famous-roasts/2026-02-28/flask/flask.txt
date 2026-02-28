@@ -1,0 +1,61 @@
+
+
+╭───────────── 🔥 ROAST-MY-CODE ─────────────╮
+│                                            │
+│ ██████╗  ██████╗  █████╗ ███████╗████████╗ │
+│ ██╔══██╗██╔═══██╗██╔══██╗██╔════╝╚══██╔══╝ │
+│ ██████╔╝██║   ██║███████║███████╗   ██║    │
+│ ██╔══██╗██║   ██║██╔══██║╚════██║   ██║    │
+│ ██║  ██║╚██████╔╝██║  ██║███████║   ██║    │
+│ ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝   ╚═╝    │
+│                                            │
+╰────────────────────────────────────────────╯
+                    Score Card                     
+                                                   
+  Category       Score   Bar Chart                 
+ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 
+  AI Slop            0   ░░░░░░░░░░░░░░░░░░░░░░░░  
+  Code Quality       0   ░░░░░░░░░░░░░░░░░░░░░░░░  
+  Style              0   ░░░░░░░░░░░░░░░░░░░░░░░░  
+  Overall            0   ░░░░░░░░░░░░░░░░░░░░░░░░  
+                                                   
+                                 Top 10 Issues                                  
+                                                                                
+  File                      Line   Severity   Description                       
+ ────────────────────────────────────────────────────────────────────────────── 
+  src/flask/config.py        163   HIGH       Empty except block swallows       
+                                              errors with pass.                 
+  src/flask/views.py         124   HIGH       Commented-out code block appears  
+                                              to span 5 lines.                  
+  src/flask/wrappers.py       34   HIGH       Commented-out code block appears  
+                                              to span 3 lines.                  
+  tests/test_appctx.py        68   HIGH       Empty except block swallows       
+                                              errors with pass.                 
+  tests/test_appctx.py        87   HIGH       Empty except block swallows       
+                                              errors with pass.                 
+  tests/test_appctx.py       141   HIGH       Placeholder identifier suggests   
+                                              unfinished AI-generated code.     
+  tests/test_appctx.py       142   HIGH       Placeholder identifier suggests   
+                                              unfinished AI-generated code.     
+  tests/test_appctx.py       144   HIGH       Placeholder identifier suggests   
+                                              unfinished AI-generated code.     
+  tests/test_appctx.py       145   HIGH       Placeholder identifier suggests   
+                                              unfinished AI-generated code.     
+  tests/test_appctx.py       146   HIGH       Placeholder identifier suggests   
+                                              unfinished AI-generated code.     
+                                                                                
+╭─── Roast Headline ────╮
+│ Codebase: hot garbage │
+╰───────────────────────╯
+🔥 config.py:163: Empty except, empty soul
+🔥 views.py:124: Commented out, but not forgotten
+🔥 wrappers.py:34: 3 lines of useless code
+🔥 test_appctx.py:68: Pass, because who needs errors?
+🔥 test_appctx.py:141: AI-generated, human-ignored
+🔥 test_appctx.py: test_url_generation_without_context_fails() fails
+🔥 tests/test_appctx.py: 5 placeholder identifiers, 0 functionality
+╭───── Verdict ──────╮
+│ 🔥 BURN IT DOWN 🔥 │
+╰────────────────────╯
+
+HTML report saved to: reports/flask.html
