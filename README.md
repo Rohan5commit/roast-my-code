@@ -7,8 +7,12 @@ The AI that roasts your codebase so your teammates don't have to.
 
 ## Install
 
+PyPI release is pending. Install from source for now:
+
 ```bash
-pip install roast-my-code
+git clone https://github.com/Rohan5commit/roast-my-code
+cd roast-my-code
+pip install -e .
 ```
 
 ## Free LLM Setup (Recommended)
