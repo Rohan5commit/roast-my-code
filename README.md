@@ -41,7 +41,7 @@ roast ./my-project --provider auto --backup-provider nim --backup-model microsof
 
 ## Demo
 
-[demo.gif]
+![roast-my-code demo](./demo.gif)
 
 ## Contributing
 
