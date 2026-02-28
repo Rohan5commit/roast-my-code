@@ -1,0 +1,31 @@
+name: Verify Roast CLI
+
+on:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pytest
+
+      - name: Run analyzer tests
+        run: pytest tests/test_analyzer.py
+
+      - name: CLI smoke test (local path)
+        run: roast . --no-llm --max-files 10
+
+      - name: CLI smoke test (GitHub URL path)
+        run: roast https://github.com/Rohan5commit/roast-my-code --no-llm --max-files 10
