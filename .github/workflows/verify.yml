@@ -44,3 +44,18 @@ jobs:
             --model llama-3.3-70b-versatile \
             --backup-provider nim \
             --backup-model microsoft/phi-4-mini-instruct
+
+      - name: CLI smoke test (forced NIM fallback)
+        env:
+          GROQ_API_KEY: invalid
+          NVIDIA_NIM_API_KEY: ${{ secrets.NVIDIA_NIM_API_KEY }}
+        run: |
+          if [ -z "$NVIDIA_NIM_API_KEY" ]; then
+            echo "No NIM secret configured; skipping fallback smoke test."
+            exit 0
+          fi
+          roast . --max-files 8 \
+            --provider auto \
+            --model llama-3.3-70b-versatile \
+            --backup-provider nim \
+            --backup-model microsoft/phi-4-mini-instruct
