@@ -1,0 +1,61 @@
+
+
+╭───────────── 🔥 ROAST-MY-CODE ─────────────╮
+│                                            │
+│ ██████╗  ██████╗  █████╗ ███████╗████████╗ │
+│ ██╔══██╗██╔═══██╗██╔══██╗██╔════╝╚══██╔══╝ │
+│ ██████╔╝██║   ██║███████║███████╗   ██║    │
+│ ██╔══██╗██║   ██║██╔══██║╚════██║   ██║    │
+│ ██║  ██║╚██████╔╝██║  ██║███████║   ██║    │
+│ ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝   ╚═╝    │
+│                                            │
+╰────────────────────────────────────────────╯
+                    Score Card                     
+                                                   
+  Category       Score   Bar Chart                 
+ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 
+  AI Slop            0   ░░░░░░░░░░░░░░░░░░░░░░░░  
+  Code Quality      72   █████████████████░░░░░░░  
+  Style             88   █████████████████████░░░  
+  Overall           39   █████████░░░░░░░░░░░░░░░  
+                                                   
+                                 Top 10 Issues                                  
+                                                                                
+  File                            Line   Severity   Description                 
+ ────────────────────────────────────────────────────────────────────────────── 
+  django/apps/config.py            112   HIGH       Empty except block          
+                                                    swallows errors with pass.  
+  django/apps/config.py            163   HIGH       Empty except block          
+                                                    swallows errors with pass.  
+  django/apps/registry.py           52   HIGH       Commented-out code block    
+                                                    appears to span 3 lines.    
+  django/apps/registry.py          400   HIGH       Commented-out code block    
+                                                    appears to span 4 lines.    
+  django/apps/registry.py          418   HIGH       Commented-out code block    
+                                                    appears to span 3 lines.    
+  django/conf/locale/ar/forma       16   HIGH       Commented-out code block    
+  ts.py                                             appears to span 3 lines.    
+  django/conf/locale/bg/forma       16   HIGH       Commented-out code block    
+  ts.py                                             appears to span 3 lines.    
+  django/conf/locale/bs/forma       16   HIGH       Commented-out code block    
+  ts.py                                             appears to span 3 lines.    
+  django/conf/locale/ckb/form       16   HIGH       Commented-out code block    
+  ats.py                                            appears to span 3 lines.    
+  django/apps/config.py            100   MEDIUM     Function `create` exceeds   
+                                                    50 lines.                   
+                                                                                
+╭── Roast Headline ──╮
+│ Codebase: hot mess │
+╰────────────────────╯
+🔥 config.py:112: pass the buck, not errors
+🔥 registry.py:52: comment apocalypse
+🔥 registry.py:400: 4 lines of useless code
+🔥 formats.py:16: commented out, not gone
+🔥 config.py💯 create function is a novel
+🔥 registry.py: worst file, worst life
+🔥 Apps class: messy, like your room
+╭───── Verdict ──────╮
+│ 🔥 BURN IT DOWN 🔥 │
+╰────────────────────╯
+
+HTML report saved to: reports/django.html
