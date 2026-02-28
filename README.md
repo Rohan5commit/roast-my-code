@@ -47,6 +47,8 @@ roast ./my-project --provider auto --backup-provider nim --backup-model microsof
 
 ![roast-my-code demo](./demo.gif)
 
+_Recorded with VHS._
+
 ## Famous Repo Roasts (2026-02-28)
 
 - [requests HTML report](./famous-roasts/2026-02-28/requests/requests.html)
