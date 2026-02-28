@@ -28,4 +28,4 @@ jobs:
         run: roast . --no-llm --max-files 10
 
       - name: CLI smoke test (GitHub URL path)
-        run: roast https://github.com/Rohan5commit/roast-my-code --no-llm --max-files 10
+        run: roast https://github.com/psf/requests --no-llm --max-files 10
