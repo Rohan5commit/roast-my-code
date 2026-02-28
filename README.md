@@ -43,6 +43,12 @@ roast ./my-project --provider auto --backup-provider nim --backup-model microsof
 
 ![roast-my-code demo](./demo.gif)
 
+## Famous Repo Roasts (2026-02-28)
+
+- [requests HTML report](./famous-roasts/2026-02-28/requests/requests.html)
+- [django HTML report](./famous-roasts/2026-02-28/django/django.html)
+- [flask HTML report](./famous-roasts/2026-02-28/flask/flask.html)
+
 ## Contributing
 
 Contributions are welcome. Open an issue for bugs/ideas, then submit a PR with tests for behavior changes.
