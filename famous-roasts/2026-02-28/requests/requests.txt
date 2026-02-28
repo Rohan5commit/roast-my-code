@@ -1,0 +1,62 @@
+
+
+╭───────────── 🔥 ROAST-MY-CODE ─────────────╮
+│                                            │
+│ ██████╗  ██████╗  █████╗ ███████╗████████╗ │
+│ ██╔══██╗██╔═══██╗██╔══██╗██╔════╝╚══██╔══╝ │
+│ ██████╔╝██║   ██║███████║███████╗   ██║    │
+│ ██╔══██╗██║   ██║██╔══██║╚════██║   ██║    │
+│ ██║  ██║╚██████╔╝██║  ██║███████║   ██║    │
+│ ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝   ╚═╝    │
+│                                            │
+╰────────────────────────────────────────────╯
+                    Score Card                     
+                                                   
+  Category       Score   Bar Chart                 
+ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 
+  AI Slop            0   ░░░░░░░░░░░░░░░░░░░░░░░░  
+  Code Quality       0   ░░░░░░░░░░░░░░░░░░░░░░░░  
+  Style              0   ░░░░░░░░░░░░░░░░░░░░░░░░  
+  Overall            0   ░░░░░░░░░░░░░░░░░░░░░░░░  
+                                                   
+                                 Top 10 Issues                                  
+                                                                                
+  File                           Line   Severity   Description                  
+ ────────────────────────────────────────────────────────────────────────────── 
+  docs/conf.py                     82   HIGH       Commented-out code block     
+                                                   appears to span 3 lines.     
+  docs/conf.py                    143   HIGH       Placeholder identifier       
+                                                   suggests unfinished          
+                                                   AI-generated code.           
+  src/requests/__init__.py        138   HIGH       Empty except block swallows  
+                                                   errors with pass.            
+  src/requests/auth.py            181   HIGH       Left a TODO/FIXME/HACK       
+                                                   marker in code.              
+  src/requests/auth.py            215   HIGH       Left a TODO/FIXME/HACK       
+                                                   marker in code.              
+  src/requests/auth.py            220   HIGH       Left a TODO/FIXME/HACK       
+                                                   marker in code.              
+  src/requests/compat.py           37   HIGH       Empty except block swallows  
+                                                   errors with pass.            
+  src/requests/hooks.py            20   HIGH       Left a TODO/FIXME/HACK       
+                                                   marker in code.              
+  tests/test_testserver.py         97   HIGH       Left a TODO/FIXME/HACK       
+                                                   marker in code.              
+  tests/testserver/server.py       91   HIGH       Empty except block swallows  
+                                                   errors with pass.            
+                                                                                
+╭──── Roast Headline ────╮
+│ Codebase is a hot mess │
+╰────────────────────────╯
+🔥 docs/conf.py:82, lazy commenting
+🔥 src/requests/__init__.py:138, errors swallowed
+🔥 src/requests/auth.py, TODO party
+🔥 src/requests/compat.py:37, pass the buck
+🔥 tests/testserver/server.py:91, silent failures
+🔥 src/requests/status_codes.py, emoji codes?
+🔥 Worst file: status_codes.py
+╭───── Verdict ──────╮
+│ 🔥 BURN IT DOWN 🔥 │
+╰────────────────────╯
+
+HTML report saved to: reports/requests.html
