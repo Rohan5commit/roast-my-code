@@ -6,12 +6,22 @@ from collections import Counter
 from dataclasses import dataclass
 import json
 import os
-from typing import Any
+import re
+from typing import Any, Literal
 
 from openai import OpenAI
 
 from roast.analyzer import AnalysisReport, Issue
 from roast.scanner import FileResult
+
+Provider = Literal["auto", "groq", "nim", "openai", "none"]
+
+DEFAULT_PRIMARY_PROVIDER = "groq"
+DEFAULT_BACKUP_PROVIDER = "nim"
+DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
+DEFAULT_GROQ_FAST_MODEL = "llama-3.1-8b-instant"
+DEFAULT_NIM_MODEL = "microsoft/phi-4-mini-instruct"
+DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
 
 
 @dataclass(slots=True)
@@ -137,22 +147,101 @@ def _generate_fallback_roast(report: AnalysisReport) -> RoastResult:
     )
 
 
-def generate_roast(
+def _provider_api_key(provider: Provider) -> str | None:
+    if provider == "groq":
+        return os.getenv("GROQ_API_KEY")
+    if provider == "nim":
+        return os.getenv("NVIDIA_NIM_API_KEY") or os.getenv("NIM_API_KEY")
+    if provider == "openai":
+        return os.getenv("OPENAI_API_KEY")
+    return None
+
+
+def _provider_base_url(provider: Provider) -> str | None:
+    if provider == "groq":
+        return "https://api.groq.com/openai/v1"
+    if provider == "nim":
+        return "https://integrate.api.nvidia.com/v1"
+    return None
+
+
+def _default_model_for_provider(provider: Provider) -> str:
+    if provider == "groq":
+        return DEFAULT_GROQ_MODEL
+    if provider == "nim":
+        return DEFAULT_NIM_MODEL
+    return DEFAULT_OPENAI_MODEL
+
+
+def _extract_json_payload(content: str) -> dict[str, Any]:
+    text = content.strip()
+    try:
+        payload = json.loads(text)
+        if isinstance(payload, dict):
+            return payload
+    except json.JSONDecodeError:
+        pass
+
+    match = re.search(r"\{[\s\S]*\}", text)
+    if not match:
+        raise ValueError("Model response was not valid JSON.")
+    payload = json.loads(match.group(0))
+    if not isinstance(payload, dict):
+        raise ValueError("Model JSON payload must be an object.")
+    return payload
+
+
+def _build_provider_plan(
+    provider: Provider,
+    model: str | None,
+    backup_provider: Provider,
+    backup_model: str | None,
+) -> list[tuple[Provider, str]]:
+    plan: list[tuple[Provider, str]] = []
+
+    if provider == "auto":
+        plan = [
+            ("groq", model or DEFAULT_GROQ_MODEL),
+            ("groq", DEFAULT_GROQ_FAST_MODEL),
+            ("nim", backup_model or DEFAULT_NIM_MODEL),
+            ("openai", DEFAULT_OPENAI_MODEL),
+        ]
+    else:
+        plan = [(provider, model or _default_model_for_provider(provider))]
+        if backup_provider not in {"none", provider}:
+            plan.append((backup_provider, backup_model or _default_model_for_provider(backup_provider)))
+
+    seen: set[tuple[Provider, str]] = set()
+    deduped: list[tuple[Provider, str]] = []
+    for item in plan:
+        if item in seen:
+            continue
+        seen.add(item)
+        deduped.append(item)
+    return deduped
+
+
+def _call_roast_llm(
+    provider: Provider,
+    model: str,
     report: AnalysisReport,
     files: list[FileResult],
-    model: str = "gpt-4o-mini",
-    no_llm: bool = False,
 ) -> RoastResult:
-    """Generate a roast using an LLM or deterministic fallback mode."""
-    if no_llm:
-        return _generate_fallback_roast(report)
+    api_key = _provider_api_key(provider)
+    if not api_key:
+        raise RuntimeError(f"Missing API key for provider '{provider}'.")
 
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    base_url = _provider_base_url(provider)
+    if base_url:
+        client = OpenAI(api_key=api_key, base_url=base_url)
+    else:
+        client = OpenAI(api_key=api_key)
+
     overall_score = report.scores.get("Overall", 0)
     response = client.chat.completions.create(
         model=model,
-        temperature=0.9,
-        response_format={"type": "json_object"},
+        temperature=0.8,
+        max_tokens=500,
         messages=[
             {
                 "role": "system",
@@ -160,12 +249,38 @@ def generate_roast(
                     "You are a senior developer who has seen too much bad code. "
                     "You are brutally honest but funny, like a Gordon Ramsay for codebases. "
                     "Be specific, reference actual file names and issues. Never be generic. "
-                    "Keep roast lines under 20 words each."
+                    "Keep roast lines under 20 words each. "
+                    "Return strict JSON only."
                 ),
             },
             {"role": "user", "content": _build_user_prompt(report, files)},
         ],
     )
     content = response.choices[0].message.content or "{}"
-    payload = json.loads(content)
+    payload = _extract_json_payload(content)
     return _normalize_roast_payload(payload, overall_score)
+
+
+def generate_roast(
+    report: AnalysisReport,
+    files: list[FileResult],
+    model: str | None = None,
+    no_llm: bool = False,
+    provider: Provider = "auto",
+    backup_provider: Provider = DEFAULT_BACKUP_PROVIDER,
+    backup_model: str | None = None,
+) -> RoastResult:
+    """Generate a roast using an LLM or deterministic fallback mode."""
+    if no_llm:
+        return _generate_fallback_roast(report)
+
+    plan = _build_provider_plan(provider, model, backup_provider, backup_model)
+    errors: list[str] = []
+
+    for provider_name, model_name in plan:
+        try:
+            return _call_roast_llm(provider_name, model_name, report, files)
+        except Exception as exc:  # noqa: BLE001
+            errors.append(f"{provider_name}:{model_name} -> {exc}")
+
+    raise RuntimeError("All LLM providers failed. " + " | ".join(errors))
