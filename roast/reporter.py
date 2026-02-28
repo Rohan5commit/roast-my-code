@@ -97,6 +97,11 @@ def render_terminal_report(
 
     console.print(f"\n[bold cyan]HTML report saved to: {Path(output_path)}[/]")
 
+    overall_score = report.scores.get("Overall", 0)
+    tweet_text = f"My+codebase+scored+{overall_score}/100+🔥+roast-my-code+github.com/Rohan5commit/roast-my-code"
+    tweet_url = f"https://twitter.com/intent/tweet?text={tweet_text}"
+    console.print(f"\n[bold magenta]Post your score → [link={tweet_url}]{tweet_url}[/link][/]")
+
 
 def _badge_color(score: int) -> str:
     if score >= 75:
