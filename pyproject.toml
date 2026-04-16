@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "roast-my-code"
-version = "0.1.0"
+version = "0.2.0"
 description = "A brutally honest, funny AI-powered code quality roaster"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -12,7 +12,6 @@ dependencies = [
   "typer[all]",
   "rich",
   "openai",
-  "gitpython",
   "jinja2",
 ]
 

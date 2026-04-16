@@ -1,7 +1,9 @@
-"""Terminal and HTML reporting."""
+"""Terminal, HTML, and JSON reporting."""
 
 from __future__ import annotations
 
+from collections import Counter
+import json
 from math import pi
 from pathlib import Path
 
@@ -37,11 +39,77 @@ def _score_color(score: int) -> str:
     return "red"
 
 
+def _badge_markdown_color(score: int) -> str:
+    if score >= 75:
+        return "brightgreen"
+    if score >= 40:
+        return "yellow"
+    return "red"
+
+
 def _score_bar(score: int, width: int = 24) -> str:
     filled = int((score / 100) * width)
     empty = width - filled
     color = _score_color(score)
     return f"[{color}]{'█' * filled}[/]{'░' * empty}"
+
+
+def _issue_counts_by_severity(issues: list[Issue]) -> dict[str, int]:
+    counts = {"high": 0, "medium": 0, "low": 0}
+    for issue in issues:
+        counts[issue.severity] = counts.get(issue.severity, 0) + 1
+    return counts
+
+
+def _issue_counts_by_category(issues: list[Issue]) -> dict[str, int]:
+    ordered = Counter(issue.category for issue in issues)
+    return dict(sorted(ordered.items(), key=lambda item: (-item[1], item[0].lower())))
+
+
+def _hotspot_files(issues: list[Issue], limit: int = 5) -> list[dict[str, int | str]]:
+    ranked = Counter(issue.file for issue in issues).most_common(limit)
+    return [{"file": file_path, "issue_count": count} for file_path, count in ranked]
+
+
+def build_report_payload(report: AnalysisReport, roast: RoastResult) -> dict[str, object]:
+    overall_score = report.scores.get("Overall", 0)
+    severity_counts = _issue_counts_by_severity(report.issues)
+    category_counts = _issue_counts_by_category(report.issues)
+    hotspots = _hotspot_files(report.issues)
+    badge_color = _badge_markdown_color(overall_score)
+
+    return {
+        "summary": {
+            "total_files": report.total_files,
+            "total_lines": report.total_lines,
+            "total_issues": len(report.issues),
+            "scores": report.scores,
+        },
+        "counts": {
+            "by_severity": severity_counts,
+            "by_category": category_counts,
+        },
+        "hotspots": hotspots,
+        "roast": {
+            "headline": roast.headline,
+            "roast_lines": roast.roast_lines,
+            "verdict": roast.verdict,
+            "verdict_emoji": roast.verdict_emoji,
+        },
+        "share": {
+            "badge_markdown": f"![Roast Score](https://img.shields.io/badge/Roast_Score-{overall_score}-{badge_color})",
+        },
+        "issues": [
+            {
+                "file": issue.file,
+                "line": issue.line,
+                "category": issue.category,
+                "severity": issue.severity,
+                "description": issue.description,
+            }
+            for issue in sorted(report.issues, key=lambda item: (_severity_order(item), item.file, item.line or 0))
+        ],
+    }
 
 
 def render_terminal_report(
@@ -66,6 +134,23 @@ def render_terminal_report(
             _score_bar(score),
         )
     console.print(score_table)
+
+    severity_counts = _issue_counts_by_severity(report.issues)
+    category_counts = _issue_counts_by_category(report.issues)
+    hotspots = _hotspot_files(report.issues, limit=3)
+    category_summary = ", ".join(f"{name}: {count}" for name, count in category_counts.items()) or "No categories to summarize."
+    hotspot_summary = ", ".join(f"{item['file']} ({item['issue_count']})" for item in hotspots) or "No hotspots found."
+    console.print(
+        Panel.fit(
+            Text.from_markup(
+                f"[bold red]High:[/] {severity_counts['high']}  [bold yellow]Medium:[/] {severity_counts['medium']}  [bold green]Low:[/] {severity_counts['low']}\n"
+                f"[bold]Categories:[/] {category_summary}\n"
+                f"[bold]Hotspots:[/] {hotspot_summary}"
+            ),
+            title="Summary",
+            border_style="cyan",
+        )
+    )
 
     issues_table = Table(title="Top 10 Issues", box=box.SIMPLE)
     issues_table.add_column("File", overflow="fold")
@@ -124,11 +209,12 @@ def export_html_report(
     )
     template = env.get_template("report.html")
 
+    payload = build_report_payload(report, roast)
     overall_score = report.scores.get("Overall", 0)
     radius = 90
     circumference = 2 * pi * radius
     dash_offset = circumference * (1 - (overall_score / 100))
-    issue_rows = sorted(report.issues, key=lambda issue: (_severity_order(issue), issue.file, issue.line or 0))
+    issue_rows = payload["issues"]
     score_items = [
         {
             "name": "AI Slop",
@@ -147,19 +233,34 @@ def export_html_report(
         },
     ]
 
-    badge_markdown = f"![Roast Score](https://img.shields.io/badge/Roast_Score-{overall_score}-red)"
     rendered = template.render(
         report=report,
         roast=roast,
         overall_score=overall_score,
         score_items=score_items,
         issues=issue_rows,
+        severity_counts=payload["counts"]["by_severity"],
+        category_counts=payload["counts"]["by_category"],
+        hotspots=payload["hotspots"],
+        total_issues=payload["summary"]["total_issues"],
         score_ring_circumference=f"{circumference:.2f}",
         score_ring_offset=f"{dash_offset:.2f}",
         overall_color=_badge_color(overall_score),
-        badge_markdown=badge_markdown,
+        badge_markdown=payload["share"]["badge_markdown"],
     )
 
     output = Path(output_path).expanduser().resolve()
     output.write_text(rendered, encoding="utf-8")
+    return output
+
+
+def export_json_report(
+    report: AnalysisReport,
+    roast: RoastResult,
+    output_path: str | Path,
+) -> Path:
+    """Export a machine-readable JSON report."""
+    payload = build_report_payload(report, roast)
+    output = Path(output_path).expanduser().resolve()
+    output.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     return output

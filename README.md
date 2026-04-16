@@ -24,6 +24,12 @@ export GROQ_API_KEY="your-groq-key"
 export NVIDIA_NIM_API_KEY="your-nim-key"
 ```
 
+If you want to roast a private GitHub repository by URL, also set:
+
+```bash
+export GITHUB_TOKEN="your-github-token"
+```
+
 Default model choices in this project:
 - Primary: `llama-3.3-70b-versatile` (Groq)
 - Backup: `microsoft/phi-4-mini-instruct` (NIM)
@@ -33,6 +39,7 @@ Default model choices in this project:
 ```bash
 roast ./my-project
 roast https://github.com/user/repo
+roast https://github.com/user/repo/tree/main --no-llm
 roast ./my-project --no-llm --output report.html
 ```
 
@@ -42,6 +49,20 @@ Provider controls:
 roast ./my-project --provider groq --model llama-3.3-70b-versatile
 roast ./my-project --provider auto --backup-provider nim --backup-model microsoft/phi-4-mini-instruct
 ```
+
+CI and machine-readable output:
+
+```bash
+roast ./my-project --no-llm --json-output roast-report.json
+roast ./my-project --no-llm --fail-under 70
+roast ./my-project --no-llm --include-config --max-files 80
+```
+
+What changed in `0.2.0`:
+- GitHub URL scans now download repo archives instead of cloning full git history.
+- Private GitHub repo URLs work when `GITHUB_TOKEN` is configured.
+- HTML reports now include hotspot summaries and interactive issue filters.
+- JSON report export and `--fail-under` make the CLI usable in CI.
 
 ## Demo
 
@@ -57,4 +78,4 @@ _Recorded with VHS._
 
 ## Contributing
 
-Contributions are welcome. Open an issue for bugs/ideas, then submit a PR with tests for behavior changes.
+Contributions are welcome. Open an issue for bugs or ideas, then submit a PR with tests for behavior changes. The main verification workflow now runs on pushes and pull requests that touch the CLI, reporter, scanner, or tests.

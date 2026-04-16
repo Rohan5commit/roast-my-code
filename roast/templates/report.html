@@ -9,6 +9,7 @@
       --bg: #0d1117;
       --panel: #161b22;
       --panel-2: #1f2937;
+      --panel-3: #111827;
       --text: #c9d1d9;
       --muted: #8b949e;
       --border: #30363d;
@@ -16,13 +17,17 @@
       --yellow: #d29922;
       --red: #f85149;
       --blue: #58a6ff;
+      --orange: #f97316;
     }
 
     * { box-sizing: border-box; }
     body {
       margin: 0;
       padding: 32px 18px 56px;
-      background: radial-gradient(circle at top right, #111827 0%, var(--bg) 55%);
+      background:
+        radial-gradient(circle at top right, rgba(88, 166, 255, 0.14) 0%, rgba(13, 17, 23, 0) 36%),
+        radial-gradient(circle at bottom left, rgba(249, 115, 22, 0.12) 0%, rgba(13, 17, 23, 0) 42%),
+        var(--bg);
       color: var(--text);
       font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
@@ -35,7 +40,7 @@
     .card {
       background: linear-gradient(180deg, #161b22 0%, #121820 100%);
       border: 1px solid var(--border);
-      border-radius: 14px;
+      border-radius: 16px;
       padding: 20px;
       margin-bottom: 18px;
       box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.02) inset;
@@ -44,6 +49,7 @@
     h1, h2, h3 { margin: 0 0 12px; }
     h1 { font-size: 2rem; letter-spacing: 0.02em; }
     h2 { font-size: 1.35rem; }
+    h3 { font-size: 1rem; color: var(--muted); }
     p { margin: 0; color: var(--muted); }
 
     .hero {
@@ -118,30 +124,76 @@
       margin-top: 10px;
     }
 
-    .meta-item {
+    .meta-item, .summary-card {
       background: var(--panel-2);
       border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 10px 12px;
+      border-radius: 12px;
+      padding: 12px 14px;
     }
 
-    .meta-item strong { display: block; color: var(--text); font-size: 1rem; }
-    .meta-item span { color: var(--muted); font-size: 0.85rem; }
+    .meta-item strong,
+    .summary-card strong {
+      display: block;
+      color: var(--text);
+      font-size: 1rem;
+    }
 
-    .badges {
+    .meta-item span,
+    .summary-card span {
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .badges, .pill-row {
       display: flex;
       gap: 10px;
       flex-wrap: wrap;
       margin-top: 12px;
     }
 
-    .badge {
+    .badge, .pill {
       border-radius: 999px;
       padding: 6px 12px;
       font-weight: 700;
       font-size: 0.85rem;
+    }
+
+    .badge {
       color: #0d1117;
     }
+
+    .pill {
+      background: var(--panel-3);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1.2fr 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .summary-card ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 8px;
+    }
+
+    .summary-card li {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--text);
+      font-size: 0.92rem;
+    }
+
+    .severity-high { color: var(--red); }
+    .severity-medium { color: var(--yellow); }
+    .severity-low { color: var(--green); }
 
     .roast-list {
       margin: 14px 0 0;
@@ -153,7 +205,7 @@
 
     .roast-line {
       background: #1a1f27;
-      border-left: 3px solid #f97316;
+      border-left: 3px solid var(--orange);
       border-radius: 8px;
       padding: 10px 12px;
       color: #f5f5f5;
@@ -169,6 +221,37 @@
       border-radius: 10px;
       border: 1px solid var(--border);
       background: #0f1720;
+    }
+
+    .filters {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) repeat(2, minmax(180px, 0.5fr)) auto;
+      gap: 10px;
+      margin: 14px 0 12px;
+    }
+
+    .filters input,
+    .filters select,
+    .filters button,
+    .share-box textarea,
+    .copy-btn {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #0b1320;
+      color: var(--text);
+      padding: 10px 12px;
+      font: inherit;
+    }
+
+    .filters button,
+    .copy-btn {
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .filters button:hover,
+    .copy-btn:hover {
+      border-color: #4b5563;
     }
 
     .table-wrap { overflow-x: auto; }
@@ -211,29 +294,17 @@
     .share-box textarea {
       width: 100%;
       min-height: 56px;
-      padding: 10px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: #0b1320;
-      color: var(--text);
       resize: vertical;
       font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
       font-size: 0.85rem;
     }
 
-    .copy-btn {
-      justify-self: start;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      background: #111827;
-      color: var(--text);
-      padding: 8px 12px;
-      font-weight: 700;
-      cursor: pointer;
-    }
-
-    .copy-btn:hover { border-color: #4b5563; }
     .small-note { color: var(--muted); font-size: 0.82rem; margin-top: 8px; }
+
+    @media (max-width: 980px) {
+      .summary-grid { grid-template-columns: 1fr; }
+      .filters { grid-template-columns: 1fr; }
+    }
 
     @media (max-width: 860px) {
       .hero { grid-template-columns: 1fr; }
@@ -261,12 +332,50 @@
         <div class="meta-grid">
           <div class="meta-item"><strong>{{ report.total_files }}</strong><span>Scanned Files</span></div>
           <div class="meta-item"><strong>{{ report.total_lines }}</strong><span>Total Lines</span></div>
-          <div class="meta-item"><strong>{{ report.issues|length }}</strong><span>Total Issues</span></div>
+          <div class="meta-item"><strong>{{ total_issues }}</strong><span>Total Issues</span></div>
         </div>
         <div class="badges">
           {% for item in score_items %}
           <span class="badge" style="background: {{ item.color }};">{{ item.name }}: {{ item.value }}</span>
           {% endfor %}
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Scan Summary</h2>
+      <div class="summary-grid">
+        <div class="summary-card">
+          <h3>Severity Breakdown</h3>
+          <ul>
+            <li><span class="severity-high">High severity</span><strong>{{ severity_counts.high }}</strong></li>
+            <li><span class="severity-medium">Medium severity</span><strong>{{ severity_counts.medium }}</strong></li>
+            <li><span class="severity-low">Low severity</span><strong>{{ severity_counts.low }}</strong></li>
+          </ul>
+        </div>
+        <div class="summary-card">
+          <h3>Category Breakdown</h3>
+          <div class="pill-row">
+            {% if category_counts %}
+              {% for name, count in category_counts.items() %}
+              <span class="pill">{{ name }}: {{ count }}</span>
+              {% endfor %}
+            {% else %}
+              <span class="pill">No issues found</span>
+            {% endif %}
+          </div>
+        </div>
+        <div class="summary-card">
+          <h3>Top Hotspots</h3>
+          <ul>
+            {% if hotspots %}
+              {% for hotspot in hotspots %}
+              <li><span>{{ hotspot.file }}</span><strong>{{ hotspot.issue_count }}</strong></li>
+              {% endfor %}
+            {% else %}
+              <li><span>No hotspot files</span><strong>0</strong></li>
+            {% endif %}
+          </ul>
         </div>
       </div>
     </section>
@@ -283,7 +392,23 @@
 
     <section class="card">
       <h2>Issues</h2>
-      <p style="margin-bottom: 12px;">Click table headers to sort by file, line, severity, or category.</p>
+      <p>Click table headers to sort. Use filters to isolate hot files, categories, or severities.</p>
+      <div class="filters">
+        <input id="issue-search" type="search" placeholder="Search files, categories, or descriptions">
+        <select id="severity-filter">
+          <option value="all">All severities</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+        <select id="category-filter">
+          <option value="all">All categories</option>
+          {% for name in category_counts.keys() %}
+          <option value="{{ name|lower }}">{{ name }}</option>
+          {% endfor %}
+        </select>
+        <button id="clear-filters" type="button">Clear filters</button>
+      </div>
       <div class="table-wrap">
         <table id="issues-table">
           <thead>
@@ -296,19 +421,25 @@
             </tr>
           </thead>
           <tbody>
-            {% for issue in issues %}
-            <tr>
-              <td>{{ issue.file }}</td>
-              <td>{{ issue.line if issue.line is not none else "-" }}</td>
-              <td class="sev-{{ issue.severity }}">{{ issue.severity|upper }}</td>
-              <td>{{ issue.category }}</td>
-              <td>{{ issue.description }}</td>
-            </tr>
-            {% endfor %}
+            {% if issues %}
+              {% for issue in issues %}
+              <tr data-issue-row="true" data-severity="{{ issue.severity }}" data-category="{{ issue.category|lower }}" data-search="{{ (issue.file ~ ' ' ~ issue.category ~ ' ' ~ issue.description)|lower }}">
+                <td>{{ issue.file }}</td>
+                <td>{{ issue.line if issue.line is not none else '-' }}</td>
+                <td class="sev-{{ issue.severity }}">{{ issue.severity|upper }}</td>
+                <td>{{ issue.category }}</td>
+                <td>{{ issue.description }}</td>
+              </tr>
+              {% endfor %}
+            {% else %}
+              <tr id="no-issues-row">
+                <td colspan="5">No issues found. Miracles happen.</td>
+              </tr>
+            {% endif %}
           </tbody>
         </table>
       </div>
-      <div class="small-note">Rows: {{ issues|length }}</div>
+      <div class="small-note" id="row-count">Showing {{ issues|length }} of {{ issues|length }} issues</div>
     </section>
 
     <section class="card">
@@ -327,9 +458,18 @@
       const table = document.getElementById("issues-table");
       const headers = table.querySelectorAll("th");
       const tbody = table.querySelector("tbody");
+      const searchInput = document.getElementById("issue-search");
+      const severityFilter = document.getElementById("severity-filter");
+      const categoryFilter = document.getElementById("category-filter");
+      const clearFilters = document.getElementById("clear-filters");
+      const rowCount = document.getElementById("row-count");
       let sortState = { column: null, asc: true };
 
       const severityRank = { HIGH: 0, MEDIUM: 1, LOW: 2 };
+
+      function getRows() {
+        return Array.from(tbody.querySelectorAll('tr[data-issue-row="true"]'));
+      }
 
       function getCellValue(row, index) {
         return row.children[index].innerText.trim();
@@ -354,16 +494,50 @@
         return asc ? av.localeCompare(bv) : bv.localeCompare(av);
       }
 
+      function applyFilters() {
+        const search = searchInput.value.trim().toLowerCase();
+        const severity = severityFilter.value;
+        const category = categoryFilter.value;
+        const rows = getRows();
+        let visibleCount = 0;
+
+        rows.forEach((row) => {
+          const matchesSearch = !search || row.dataset.search.includes(search);
+          const matchesSeverity = severity === "all" || row.dataset.severity === severity;
+          const matchesCategory = category === "all" || row.dataset.category === category;
+          const visible = matchesSearch && matchesSeverity && matchesCategory;
+          row.style.display = visible ? "" : "none";
+          if (visible) {
+            visibleCount += 1;
+          }
+        });
+
+        rowCount.textContent = `Showing ${visibleCount} of ${rows.length} issues`;
+      }
+
       headers.forEach((header) => {
         header.addEventListener("click", () => {
           const col = Number(header.getAttribute("data-col"));
           const asc = sortState.column === col ? !sortState.asc : true;
           sortState = { column: col, asc };
 
-          const rows = Array.from(tbody.querySelectorAll("tr"));
+          const rows = getRows();
           rows.sort((a, b) => compareValues(a, b, col, asc));
           rows.forEach((row) => tbody.appendChild(row));
+          applyFilters();
         });
+      });
+
+      [searchInput, severityFilter, categoryFilter].forEach((element) => {
+        element.addEventListener("input", applyFilters);
+        element.addEventListener("change", applyFilters);
+      });
+
+      clearFilters?.addEventListener("click", () => {
+        searchInput.value = "";
+        severityFilter.value = "all";
+        categoryFilter.value = "all";
+        applyFilters();
       });
 
       const copyBtn = document.getElementById("copy-btn");
@@ -379,6 +553,8 @@
           copyStatus.textContent = "Copy failed. Select and copy manually.";
         }
       });
+
+      applyFilters();
     })();
   </script>
 </body>
