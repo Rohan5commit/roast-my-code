@@ -138,8 +138,8 @@ def render_terminal_report(
     severity_counts = _issue_counts_by_severity(report.issues)
     category_counts = _issue_counts_by_category(report.issues)
     hotspots = _hotspot_files(report.issues, limit=3)
-    category_summary = ", \".join(f"{name}: {count}" for name, count in category_counts.items()) or "No categories to summarize."
-    hotspot_summary = ", \".join(f"{item['file']} ({item['issue_count']})" for item in hotspots) or "No hotspots found."
+    category_summary = ", ".join(f"{name}: {count}" for name, count in category_counts.items()) or "No categories to summarize."
+    hotspot_summary = ", ".join(f"{item['file']} ({item['issue_count']})" for item in hotspots) or "No hotspots found."
     console.print(
         Panel.fit(
             Text.from_markup(
