@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 import logging
+from pathlib import Path
 from typing import Iterable
 
 LOGGER = logging.getLogger(__name__)
@@ -18,6 +18,14 @@ CONFIG_EXTENSIONS = {
     ".ini",
     ".cfg",
     ".md",
+}
+CONFIG_FILENAMES = {
+    "package-lock.json",
+    "yarn.lock",
+    "pnpm-lock.yaml",
+    "poetry.lock",
+    "pylintrc",
+    "eslint.config.js",
 }
 
 LANGUAGE_BY_EXTENSION = {
@@ -74,14 +82,7 @@ def _infer_language(path: Path) -> str:
 def _is_config_file(path: Path) -> bool:
     if path.suffix.lower() in CONFIG_EXTENSIONS:
         return True
-    return path.name.lower() in {
-        "package-lock.json",
-        "yarn.lock",
-        "pnpm-lock.yaml",
-        "poetry.lock",
-        "pylintrc",
-        "eslint.config.js",
-    }
+    return path.name.lower() in CONFIG_FILENAMES
 
 
 def _should_skip_path(path: Path) -> bool:
@@ -92,7 +93,12 @@ def _should_skip_path(path: Path) -> bool:
     return name == ".env" or name.startswith(".env.")
 
 
-def scan_repo(path: str | Path, extensions: Iterable[str], max_files: int) -> list[FileResult]:
+def scan_repo(
+    path: str | Path,
+    extensions: Iterable[str],
+    max_files: int,
+    include_config: bool = False,
+) -> list[FileResult]:
     """Scan a repository path and return parsed source files."""
     root = Path(path).expanduser().resolve()
     ext_filter = _normalize_extensions(extensions)
@@ -103,9 +109,12 @@ def scan_repo(path: str | Path, extensions: Iterable[str], max_files: int) -> li
             continue
         if _should_skip_path(file_path.relative_to(root)):
             continue
-        if ext_filter and file_path.suffix.lower() not in ext_filter:
+
+        is_config_file = _is_config_file(file_path)
+        if ext_filter and file_path.suffix.lower() not in ext_filter and not (include_config and is_config_file):
             continue
-        priority = 1 if _is_config_file(file_path) else 0
+
+        priority = 1 if is_config_file else 0
         candidates.append((priority, file_path))
 
     candidates.sort(key=lambda item: (item[0], str(item[1]).lower()))
