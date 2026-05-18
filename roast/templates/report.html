@@ -344,6 +344,16 @@
 
     <section class="card">
       <h2>Scan Summary</h2>
+      {% if payload.trend|length > 1 %}
+      <div class="summary-card" style="margin-bottom: 20px;">
+        <h3>Score Trend</h3>
+        <div style="height: 100px; display: flex; align-items: flex-end; gap: 4px;">
+          {% for score in payload.trend %}
+          <div style="flex: 1; background: #6366f1; height: {{ score }}%;" title="Score: {{ score }}"></div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
       <div class="summary-grid">
         <div class="summary-card">
           <h3>Severity Breakdown</h3>

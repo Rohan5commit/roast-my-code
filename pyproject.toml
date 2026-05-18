@@ -13,6 +13,7 @@ dependencies = [
   "rich",
   "openai",
   "jinja2",
+  "pyyaml",
 ]
 
 [project.scripts]

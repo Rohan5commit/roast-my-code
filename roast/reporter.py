@@ -16,6 +16,7 @@ from rich.text import Text
 
 from roast.analyzer import AnalysisReport, Issue
 from roast.roaster import RoastResult
+from roast.history import get_history
 
 HEADER_ART = r"""
 ██████╗  ██████╗  █████╗ ███████╗████████╗
@@ -77,6 +78,8 @@ def build_report_payload(report: AnalysisReport, roast: RoastResult) -> dict[str
     category_counts = _issue_counts_by_category(report.issues)
     hotspots = _hotspot_files(report.issues)
     badge_color = _badge_markdown_color(overall_score)
+    history = get_history()
+    trend = [h["overall_score"] for h in history]
 
     return {
         "summary": {
@@ -85,6 +88,7 @@ def build_report_payload(report: AnalysisReport, roast: RoastResult) -> dict[str
             "total_issues": len(report.issues),
             "scores": report.scores,
         },
+        "trend": trend,
         "counts": {
             "by_severity": severity_counts,
             "by_category": category_counts,
@@ -214,31 +218,30 @@ def export_html_report(
     radius = 90
     circumference = 2 * pi * radius
     dash_offset = circumference * (1 - (overall_score / 100))
-    issue_rows = payload["issues"]
-    score_items = [
-        {
-            "name": "AI Slop",
-            "value": report.scores.get("AI Slop", 0),
-            "color": _badge_color(report.scores.get("AI Slop", 0)),
-        },
-        {
-            "name": "Code Quality",
-            "value": report.scores.get("Code Quality", 0),
-            "color": _badge_color(report.scores.get("Code Quality", 0)),
-        },
-        {
-            "name": "Style",
-            "value": report.scores.get("Style", 0),
-            "color": _badge_color(report.scores.get("Style", 0)),
-        },
-    ]
-
+    
     rendered = template.render(
+        payload=payload,
         report=report,
         roast=roast,
         overall_score=overall_score,
-        score_items=score_items,
-        issues=issue_rows,
+        score_items=[
+            {
+                "name": "AI Slop",
+                "value": report.scores.get("AI Slop", 0),
+                "color": _badge_color(report.scores.get("AI Slop", 0)),
+            },
+            {
+                "name": "Code Quality",
+                "value": report.scores.get("Code Quality", 0),
+                "color": _badge_color(report.scores.get("Code Quality", 0)),
+            },
+            {
+                "name": "Style",
+                "value": report.scores.get("Style", 0),
+                "color": _badge_color(report.scores.get("Style", 0)),
+            },
+        ],
+        issues=payload["issues"],
         severity_counts=payload["counts"]["by_severity"],
         category_counts=payload["counts"]["by_category"],
         hotspots=payload["hotspots"],

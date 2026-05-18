@@ -28,6 +28,7 @@ DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
 class RoastResult:
     headline: str
     roast_lines: list[str]
+    remediations: list[str]
     verdict: str
     verdict_emoji: str
 
@@ -85,8 +86,9 @@ def _build_user_prompt(report: AnalysisReport, files: list[FileResult]) -> str:
         "Generate:\n"
         "1. A one-liner headline roast\n"
         "2. 5-8 specific roast bullets\n"
-        "3. A verdict: SHIP IT (score >= 75), NEEDS WORK (40-74), BURN IT DOWN (<40)\n\n"
-        "Respond strictly as JSON with keys: headline, roast_lines, verdict, verdict_emoji."
+        "3. 3-5 specific refactoring/fix suggestions for the issues found\n"
+        "4. A verdict: SHIP IT (score >= 75), NEEDS WORK (40-74), BURN IT DOWN (<40)\n\n"
+        "Respond strictly as JSON with keys: headline, roast_lines, remediations, verdict, verdict_emoji."
     )
 
 
@@ -104,9 +106,16 @@ def _normalize_roast_payload(payload: dict[str, Any], overall_score: int) -> Roa
     if len(roast_lines) < 5:
         roast_lines.extend(_fallback_roast_lines(overall_score, needed=5 - len(roast_lines)))
 
+    remediations_raw = payload.get("remediations", [])
+    if not isinstance(remediations_raw, list):
+        remediations_raw = []
+    remediations = [str(r).strip() for r in remediations_raw if str(r).strip()]
+    remediations = remediations[:5]
+
     return RoastResult(
         headline=headline,
         roast_lines=roast_lines,
+        remediations=remediations,
         verdict=verdict,
         verdict_emoji=emoji,
     )
@@ -142,6 +151,7 @@ def _generate_fallback_roast(report: AnalysisReport) -> RoastResult:
     return RoastResult(
         headline=headline,
         roast_lines=_fallback_roast_lines(overall_score, needed=6),
+        remediations=["Refactor to remove AI slop", "Standardize naming conventions"],
         verdict=verdict,
         verdict_emoji=emoji,
     )

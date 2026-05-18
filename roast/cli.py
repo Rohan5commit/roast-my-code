@@ -11,6 +11,7 @@ import tempfile
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
+from datetime import datetime
 import zipfile
 
 import typer
@@ -22,6 +23,7 @@ from roast.analyzer import analyze
 from roast.reporter import export_html_report, export_json_report, render_terminal_report
 from roast.roaster import DEFAULT_GROQ_MODEL, DEFAULT_NIM_MODEL, generate_roast
 from roast.scanner import scan_repo
+from roast.history import save_history
 
 app = typer.Typer(
     help="Brutally honest AI-powered code quality roaster.",
@@ -293,6 +295,15 @@ def roast(
         if json_output:
             export_json_report(report, roast_result, output_path=json_output)
         render_terminal_report(report, roast_result, output_path=output, console=console)
+        
+        # Save to history for trend tracking
+        save_history({
+            "timestamp": datetime.now().isoformat(),
+            "scores": report.scores,
+            "overall_score": report.scores.get("Overall", 0),
+            "verdict": roast_result.verdict,
+        })
+
         if json_output:
             console.print(f"[bold cyan]JSON report saved to: {Path(json_output).expanduser()}[/]")
 

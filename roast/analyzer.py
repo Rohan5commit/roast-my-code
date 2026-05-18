@@ -8,6 +8,7 @@ import re
 from typing import Literal
 
 from roast.scanner import FileResult
+from roast.custom_rules import load_custom_rules, CustomRule
 
 Severity = Literal["low", "medium", "high"]
 
@@ -279,8 +280,13 @@ def _detect_python_medium_severity(file: FileResult, issues: list[Issue], tree: 
         )
 
     lines = file.content.splitlines()
+    custom_rules = load_custom_rules()
     if not _is_test_file(file.path):
         for idx, line in enumerate(lines, start=1):
+            for rule in custom_rules:
+                if re.search(rule.pattern, line):
+                    _add_issue(issues, file.path, idx, rule.category, rule.severity, rule.message)
+
             if re.search(r"\bprint\s*\(", line):
                 _add_issue(
                     issues,

@@ -1,0 +1,35 @@
+name: 'Roast My Code'
+description: 'Brutally honest, AI-powered code quality governance.'
+author: 'Rohan'
+inputs:
+  path:
+    description: 'Path to the directory to roast'
+    required: false
+    default: '.'
+  fail_under:
+    description: 'Exit with error if the roast score is below this value'
+    required: false
+    default: '0'
+  github_token:
+    description: 'GitHub token for private repository access'
+    required: false
+    default: ${{ github.token }}
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - name: Install roast-my-code
+      shell: bash
+      run: pip install .
+    - name: Run Roast
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github_token }}
+      run: |
+        roast ${{ inputs.path }} --no-llm --fail-under ${{ inputs.fail_under }} --json-output roast-report.json
+branding:
+  icon: 'zap'
+  color: 'red'
