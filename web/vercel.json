@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "api/roast.py": {
+      "maxDuration": 60
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/roast",
+      "destination": "/api/roast.py"
+    }
+  ]
+}

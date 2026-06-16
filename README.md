@@ -70,6 +70,36 @@ What changed in `0.2.0`:
 
 _Recorded with VHS._
 
+## Web Dashboard
+
+A Next.js web dashboard is included in the `web/` directory. It provides a browser-based UI for roasting repos via GitHub URL.
+
+**Live**: https://roast-web-six.vercel.app
+
+### Running locally
+
+```bash
+cd web
+npm install
+npm run dev
+```
+
+### Environment variables
+
+Copy `.env.example` to `.env.local`:
+
+```bash
+cp .env.example .env.local
+```
+
+Required for LLM roasts:
+- `NVIDIA_NIM_API_KEY` — NVIDIA NIM API key (optional, fallback roasts work without it)
+- `GITHUB_TOKEN` — GitHub token for higher API rate limits (optional)
+
+### Deploy to Vercel
+
+The `web/` directory is configured for Vercel deployment. Connect your repo to Vercel and set the root directory to `web/`.
+
 ## Famous Repo Roasts (2026-02-28)
 
 - [requests HTML report](./famous-roasts/2026-02-28/requests/requests.html)

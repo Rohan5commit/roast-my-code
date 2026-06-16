@@ -17,7 +17,8 @@ env/
 
 # Environment files
 .env
-.env.*
+.env.local
+.env*.local
 
 # Test / coverage
 .pytest_cache/
@@ -29,3 +30,11 @@ htmlcov/
 .DS_Store
 .vscode/
 .idea/
+
+# Next.js (web dashboard)
+web/node_modules/
+web/.next/
+web/out/
+web/.vercel/
+web/*.tsbuildinfo
+web/next-env.d.ts
