@@ -2,14 +2,15 @@
   "installCommand": "cd web && npm install",
   "buildCommand": "cd web && npm run build",
   "outputDirectory": "web/.next",
+  "functions": {
+    "api/roast.py": {
+      "maxDuration": 60
+    }
+  },
   "rewrites": [
     {
-      "source": "/gallery",
-      "destination": "/web/.next/server/app/gallery.html"
-    },
-    {
-      "source": "/roast/:id",
-      "destination": "/web/.next/server/app/roast/[id]/page.html"
+      "source": "/api/:path*",
+      "destination": "/api/roast.py"
     }
   ]
 }

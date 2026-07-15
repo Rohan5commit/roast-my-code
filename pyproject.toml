@@ -25,6 +25,3 @@ roast = "roast.cli:app"
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
-
-[tool.vercel]
-entrypoint = "api:handler"
