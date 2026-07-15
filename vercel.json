@@ -1,16 +1,17 @@
 {
-  "installCommand": "cd web && npm install",
+  "framework": "nextjs",
+  "installCommand": "npm install && cd web && npm install",
   "buildCommand": "cd web && npm run build",
   "outputDirectory": "web/.next",
   "functions": {
-    "api/roast.py": {
+    "web/api/roast.py": {
       "maxDuration": 60
     }
   },
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "/api/roast.py"
+      "destination": "/web/api/roast.py"
     }
   ]
 }
