@@ -43,3 +43,4 @@ web/next-env.d.ts
 .roast/
 roast-report.json
 reports/
+.vercel
