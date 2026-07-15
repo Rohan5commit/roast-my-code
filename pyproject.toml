@@ -16,6 +16,9 @@ dependencies = [
   "pyyaml",
 ]
 
+[tool.setuptools.packages.find]
+include = ["roast*"]
+
 [project.scripts]
 roast = "roast.cli:app"
 
