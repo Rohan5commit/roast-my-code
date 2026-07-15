@@ -5,8 +5,7 @@
   "installCommand": "cd web && npm install",
   "functions": {
     "web/api/roast.py": {
-      "maxDuration": 60,
-      "runtime": "python3.12"
+      "maxDuration": 60
     }
   },
   "rewrites": [
