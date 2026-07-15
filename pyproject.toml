@@ -27,4 +27,4 @@ pythonpath = ["."]
 testpaths = ["tests"]
 
 [tool.vercel]
-entrypoint = "web/api/roast:handler"
+entrypoint = "web/api/roast.py:handler"
