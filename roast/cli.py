@@ -98,6 +98,11 @@ def _download_github_archive(
 
     try:
         with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
+            dest = Path(temp_dir.name).resolve()
+            for member in archive.namelist():
+                target = (dest / member).resolve()
+                if not str(target).startswith(str(dest) + os.sep) and target != dest:
+                    raise RuntimeError(f"Zip entry attempts path traversal: {member}")
             archive.extractall(temp_dir.name)
     except zipfile.BadZipFile as exc:
         raise RuntimeError("GitHub archive download was not a valid zip file.") from exc
@@ -296,13 +301,16 @@ def roast(
             export_json_report(report, roast_result, output_path=json_output)
         render_terminal_report(report, roast_result, output_path=output, console=console)
         
-        # Save to history for trend tracking
-        save_history({
-            "timestamp": datetime.now().isoformat(),
-            "scores": report.scores,
-            "overall_score": report.scores.get("Overall", 0),
-            "verdict": roast_result.verdict,
-        })
+        # Save to history for trend tracking (non-critical, don't crash on failure)
+        try:
+            save_history({
+                "timestamp": datetime.now().isoformat(),
+                "scores": report.scores,
+                "overall_score": report.scores.get("Overall", 0),
+                "verdict": roast_result.verdict,
+            })
+        except Exception:
+            pass
 
         if json_output:
             console.print(f"[bold cyan]JSON report saved to: {Path(json_output).expanduser()}[/]")

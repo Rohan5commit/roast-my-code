@@ -14,11 +14,12 @@ def test_build_report_payload_includes_counts_and_hotspots() -> None:
             Issue(file="app/main.py", line=22, category="AI Slop", severity="medium", description="Magic number"),
             Issue(file="app/api.py", line=8, category="Style", severity="low", description="Missing docstring"),
         ],
-        scores={"AI Slop": 78, "Code Quality": 65, "Style": 92, "Overall": 81},
+        scores={"AI Slop": 78, "Code Quality": 65, "Security": 85, "Style": 92, "Overall": 81},
     )
     roast = RoastResult(
         headline="Amazingly survivable.",
         roast_lines=["Line one", "Line two", "Line three", "Line four", "Line five"],
+        remediations=["Fix this", "Do that"],
         verdict="SHIP IT",
         verdict_emoji="🚀",
     )

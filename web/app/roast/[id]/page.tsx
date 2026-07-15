@@ -40,9 +40,12 @@ export default function RoastPage() {
         const cached = sessionStorage.getItem(`roast-${params.id}`);
         if (cached) {
           try {
-            setData(JSON.parse(cached));
-            setLoading(false);
-            return;
+            const parsed = JSON.parse(cached);
+            if (parsed && parsed.score !== undefined) {
+              setData(parsed);
+              setLoading(false);
+              return;
+            }
           } catch {}
         }
       }
@@ -57,6 +60,11 @@ export default function RoastPage() {
             setError("not_found");
           } else {
             setData(result);
+            if (typeof window !== "undefined") {
+              try {
+                sessionStorage.setItem(`roast-${params.id}`, JSON.stringify(result));
+              } catch {}
+            }
           }
         }
       } catch (err) {

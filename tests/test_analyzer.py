@@ -1,6 +1,6 @@
 """Tests for analyzer module."""
 
-from roast.analyzer import AI_SLOP, CODE_QUALITY, STYLE, analyze
+from roast.analyzer import AI_SLOP, CODE_QUALITY, SECURITY, STYLE, analyze
 from roast.scanner import FileResult
 
 
@@ -55,6 +55,7 @@ def test_scores_are_clamped_to_zero_minimum() -> None:
     report = analyze([file])
     assert report.scores[AI_SLOP] == 0
     assert report.scores[CODE_QUALITY] >= 0
+    assert report.scores[SECURITY] >= 0
     assert report.scores[STYLE] >= 0
     assert report.scores["Overall"] >= 0
 

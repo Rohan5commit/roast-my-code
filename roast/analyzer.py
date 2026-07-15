@@ -15,6 +15,7 @@ Severity = Literal["low", "medium", "high"]
 AI_SLOP = "AI Slop"
 CODE_QUALITY = "Code Quality"
 STYLE = "Style"
+SECURITY = "Security"
 
 TODO_PATTERN = re.compile(r"#\s*(TODO|FIXME|HACK|XXX)\b", re.IGNORECASE)
 PLACEHOLDER_PATTERN = re.compile(r"\b(foo|bar|baz|temp|data2|result2|test123)\b")
@@ -268,7 +269,7 @@ def _detect_commented_out_blocks(file: FileResult, issues: list[Issue]) -> None:
     flush()
 
 
-def _detect_python_medium_severity(file: FileResult, issues: list[Issue], tree: ast.AST | None) -> None:
+def _detect_python_medium_severity(file: FileResult, issues: list[Issue], tree: ast.AST | None, custom_rules: list[CustomRule]) -> None:
     if file.line_count > 300:
         _add_issue(
             issues,
@@ -280,7 +281,6 @@ def _detect_python_medium_severity(file: FileResult, issues: list[Issue], tree: 
         )
 
     lines = file.content.splitlines()
-    custom_rules = load_custom_rules()
     if not _is_test_file(file.path):
         for idx, line in enumerate(lines, start=1):
             for rule in custom_rules:
@@ -520,6 +520,10 @@ def _compute_score_for_category(issues: list[Issue], category: str) -> int:
 def analyze(files: list[FileResult]) -> AnalysisReport:
     """Analyze scanned files and return issues and scoring."""
     issues: list[Issue] = []
+    custom_rules = load_custom_rules()
+
+    # Lazy import to avoid circular dependency
+    from roast.security import detect_security_issues
 
     for file in files:
         tree: ast.AST | None = None
@@ -528,7 +532,7 @@ def analyze(files: list[FileResult]) -> AnalysisReport:
 
         if file.language == "python":
             _detect_python_high_severity(file, issues, tree)
-            _detect_python_medium_severity(file, issues, tree)
+            _detect_python_medium_severity(file, issues, tree, custom_rules)
         elif file.language in {"javascript", "typescript"}:
             _detect_js_high_severity(file, issues)
             _detect_js_medium_severity(file, issues)
@@ -566,14 +570,18 @@ def analyze(files: list[FileResult]) -> AnalysisReport:
         _detect_commented_out_blocks(file, issues)
         _detect_style_issues(file, issues, tree)
 
+        detect_security_issues(file, issues, tree)
+
     slop_score = _compute_score_for_category(issues, AI_SLOP)
     quality_score = _compute_score_for_category(issues, CODE_QUALITY)
+    security_score = _compute_score_for_category(issues, SECURITY)
     style_score = _compute_score_for_category(issues, STYLE)
-    overall_score = round((slop_score * 0.5) + (quality_score * 0.3) + (style_score * 0.2))
+    overall_score = round((slop_score * 0.35) + (quality_score * 0.25) + (security_score * 0.25) + (style_score * 0.15))
 
     scores = {
         AI_SLOP: slop_score,
         CODE_QUALITY: quality_score,
+        SECURITY: security_score,
         STYLE: style_score,
         "Overall": overall_score,
     }

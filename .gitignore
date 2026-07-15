@@ -38,3 +38,8 @@ web/out/
 web/.vercel/
 web/*.tsbuildinfo
 web/next-env.d.ts
+
+# Roast output
+.roast/
+roast-report.json
+reports/

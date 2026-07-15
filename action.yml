@@ -29,7 +29,7 @@ runs:
       env:
         GITHUB_TOKEN: ${{ inputs.github_token }}
       run: |
-        roast ${{ inputs.path }} --no-llm --fail-under ${{ inputs.fail_under }} --json-output roast-report.json
+        roast "${{ inputs.path }}" --no-llm --fail-under "${{ inputs.fail_under }}" --json-output roast-report.json
 branding:
   icon: 'zap'
   color: 'red'

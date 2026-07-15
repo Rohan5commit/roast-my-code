@@ -80,6 +80,10 @@ def _build_user_prompt(report: AnalysisReport, files: list[FileResult]) -> str:
         "Here is a summary of a codebase scan:\n"
         f"- Total files: {report.total_files}, Total lines: {report.total_lines}\n"
         f"- Overall score: {overall_score}/100\n"
+        f"- AI Slop score: {report.scores.get('AI Slop', 0)}/100\n"
+        f"- Code Quality score: {report.scores.get('Code Quality', 0)}/100\n"
+        f"- Security score: {report.scores.get('Security', 0)}/100\n"
+        f"- Style score: {report.scores.get('Style', 0)}/100\n"
         f"- Top issues found:\n{issues_block}\n"
         f"- Worst file: {worst}\n"
         f"- Sample of actual code from worst file:\n{sample}\n\n"
@@ -252,6 +256,7 @@ def _call_roast_llm(
         model=model,
         temperature=0.8,
         max_tokens=500,
+        timeout=30,
         messages=[
             {
                 "role": "system",
@@ -266,6 +271,8 @@ def _call_roast_llm(
             {"role": "user", "content": _build_user_prompt(report, files)},
         ],
     )
+    if not response.choices:
+        raise RuntimeError("LLM returned empty response (content filter or safety block).")
     content = response.choices[0].message.content or "{}"
     payload = _extract_json_payload(content)
     return _normalize_roast_payload(payload, overall_score)

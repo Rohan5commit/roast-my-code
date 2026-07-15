@@ -79,7 +79,7 @@ def build_report_payload(report: AnalysisReport, roast: RoastResult) -> dict[str
     hotspots = _hotspot_files(report.issues)
     badge_color = _badge_markdown_color(overall_score)
     history = get_history()
-    trend = [h["overall_score"] for h in history]
+    trend = [h.get("overall_score", 0) for h in history]
 
     return {
         "summary": {
@@ -130,7 +130,7 @@ def render_terminal_report(
     score_table.add_column("Category", style="bold")
     score_table.add_column("Score", justify="right")
     score_table.add_column("Bar Chart")
-    for category in ("AI Slop", "Code Quality", "Style", "Overall"):
+    for category in ("AI Slop", "Code Quality", "Security", "Style", "Overall"):
         score = report.scores.get(category, 0)
         score_table.add_row(
             category,
@@ -234,6 +234,11 @@ def export_html_report(
                 "name": "Code Quality",
                 "value": report.scores.get("Code Quality", 0),
                 "color": _badge_color(report.scores.get("Code Quality", 0)),
+            },
+            {
+                "name": "Security",
+                "value": report.scores.get("Security", 0),
+                "color": _badge_color(report.scores.get("Security", 0)),
             },
             {
                 "name": "Style",

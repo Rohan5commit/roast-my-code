@@ -7,6 +7,7 @@ import urllib.error
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 from dataclasses import dataclass, asdict, field
+from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 
 # ============================================================
@@ -107,14 +108,39 @@ def scan_repo(path: str, max_files: int = 50) -> List[FileResult]:
 TODO_PATTERN = re.compile(r"#\s*(TODO|FIXME|HACK|XXX)\b", re.IGNORECASE)
 PLACEHOLDER_PATTERN = re.compile(r"\b(foo|bar|baz|temp|data2|result2|test123)\b")
 FAKE_IMPORTS = {"magiclib", "utils2", "codemancer", "autocodekit", "aihelpers"}
-BAD_FUNCTION_NAMES = {"handle_it", "do_stuff", "process_data", "helper"}
 PASSWORD_PATTERN = re.compile(r"(password|passwd|secret|api_key)\s*=\s*['\"][^'\"]+['\"]", re.IGNORECASE)
 URL_PATTERN = re.compile(r"(https?://[^\s'\"]+)")
 CONSOLE_LOG_PATTERN = re.compile(r"console\.(log|warn|error)\(")
 PRINT_PATTERN = re.compile(r"\bprint\(")
 LONG_LINE_THRESHOLD = 120
 LONG_FUNCTION_LINES = 50
-MAGIC_NUMBER_PATTERN = re.compile(r"\b\d{3,}\b")
+
+# Security patterns
+SQL_INJECTION_PATTERN = re.compile(
+    r"(?:execute|cursor\.execute|query)\s*\(\s*(?:f[\"']|['\"].*%s|['\"].*\+)",
+    re.IGNORECASE,
+)
+HARDCODED_SECRET_PATTERNS = [
+    (re.compile(r"password\s*=\s*['\"][^'\"]+['\"]", re.IGNORECASE), "Hardcoded password detected."),
+    (re.compile(r"api_key\s*=\s*['\"][^'\"]+['\"]", re.IGNORECASE), "Hardcoded API key detected."),
+    (re.compile(r"secret\s*=\s*['\"][^'\"]+['\"]", re.IGNORECASE), "Hardcoded secret detected."),
+    (re.compile(r"token\s*=\s*['\"][^'\"]+['\"]", re.IGNORECASE), "Hardcoded token detected."),
+    (re.compile(r"aws_secret_access_key\s*=\s*['\"][^'\"]+['\"]", re.IGNORECASE), "AWS secret access key hardcoded."),
+    (re.compile(r"-----BEGIN (?:RSA |EC )?PRIVATE KEY-----"), "Exposed private key in source code."),
+]
+JS_SECURITY_PATTERNS = [
+    (re.compile(r"\beval\s*\("), "high", "Use of eval() allows arbitrary code execution."),
+    (re.compile(r"\.innerHTML\s*="), "high", "Assignment to innerHTML enables XSS attacks."),
+    (re.compile(r"\bdocument\.write\s*\("), "high", "document.write() enables XSS attacks."),
+    (re.compile(r"\bnew\s+Function\s*\("), "medium", "Dynamic function construction via new Function()."),
+    (re.compile(r"\bsetTimeout\s*\(['\"]"), "medium", "String-eval setTimeout is a security risk."),
+    (re.compile(r"\bsetInterval\s*\(['\"]"), "medium", "String-eval setInterval is a security risk."),
+    (re.compile(r"\bdangerouslySetInnerHTML\b"), "medium", "React dangerouslySetInnerHTML may enable XSS."),
+    (re.compile(r"\bMath\.random\s*\("), "medium", "Math.random() is not cryptographically secure."),
+    (re.compile(r"document\.cookie\s*="), "high", "Direct cookie manipulation without security flags."),
+]
+PY_DANGEROUS_CALLS = {"eval": True, "exec": True, "compile": True, "__import__": True}
+PY_SHELL_CALLS = {"system", "popen"}
 
 def _detect_high_severity(content: str, path: str, language: str) -> List[Issue]:
     issues = []
@@ -125,11 +151,11 @@ def _detect_high_severity(content: str, path: str, language: str) -> List[Issue]
         if TODO_PATTERN.search(line):
             issues.append(Issue(file=path, line=i, category="AI Slop", severity="high", description="TODO/FIXME/HACK marker found"))
 
-        if not is_test and PLACEHOLDER_PATTERN.search(line):
+        if PLACEHOLDER_PATTERN.search(line):
             issues.append(Issue(file=path, line=i, category="AI Slop", severity="high", description=f"Placeholder name detected: {line.strip()[:60]}"))
 
         if PASSWORD_PATTERN.search(line):
-            issues.append(Issue(file=path, line=i, category="Code Quality", severity="high", description="Hardcoded password/secret/key detected"))
+            issues.append(Issue(file=path, line=i, category="Code Quality", severity="medium", description="Hardcoded password/secret/key detected"))
 
     if language == "python":
         for i, line in enumerate(lines, 1):
@@ -155,7 +181,7 @@ def _detect_medium_severity(content: str, path: str, language: str) -> List[Issu
             if PRINT_PATTERN.search(line):
                 issues.append(Issue(file=path, line=i, category="Code Quality", severity="medium", description="print() statement in non-test code"))
 
-    if language in ("javascript", "typescript"):
+    if language in ("javascript", "typescript") and not is_test:
         for i, line in enumerate(lines, 1):
             if CONSOLE_LOG_PATTERN.search(line):
                 issues.append(Issue(file=path, line=i, category="Code Quality", severity="medium", description="console.log/warn/error left in code"))
@@ -172,6 +198,56 @@ def _detect_medium_severity(content: str, path: str, language: str) -> List[Issu
 
     return issues
 
+def _detect_security(content: str, path: str, language: str) -> List[Issue]:
+    issues = []
+    lines = content.split("\n")
+
+    # Hardcoded secrets (language-agnostic)
+    for i, line in enumerate(lines, 1):
+        for pattern, desc in HARDCODED_SECRET_PATTERNS:
+            if pattern.search(line):
+                issues.append(Issue(file=path, line=i, category="Security", severity="high", description=desc))
+
+    if language == "python":
+        # SQL injection
+        for i, line in enumerate(lines, 1):
+            if SQL_INJECTION_PATTERN.search(line):
+                issues.append(Issue(file=path, line=i, category="Security", severity="high", description="Possible SQL injection — string interpolation in query."))
+        # Dangerous builtins
+        for i, line in enumerate(lines, 1):
+            stripped = line.strip()
+            for call in PY_DANGEROUS_CALLS:
+                if re.search(rf"\b{call}\s*\(", line):
+                    issues.append(Issue(file=path, line=i, category="Security", severity="high", description=f"Use of {call}() allows arbitrary code execution."))
+        # shell=True in subprocess
+        for i, line in enumerate(lines, 1):
+            if re.search(r"\b(?:subprocess\.(?:run|call|check_output|check_call|Popen)|subprocess\.run)\s*\(", line) and "shell=True" in line:
+                issues.append(Issue(file=path, line=i, category="Security", severity="high", description="subprocess called with shell=True — shell injection risk."))
+        # os.system
+        for i, line in enumerate(lines, 1):
+            if re.search(r"\bos\.system\s*\(", line):
+                issues.append(Issue(file=path, line=i, category="Security", severity="high", description="os.system() — use subprocess without shell=True instead."))
+        # yaml.load without Loader
+        for i, line in enumerate(lines, 1):
+            if re.search(r"\byaml\.load\s*\(", line) and "Loader" not in line:
+                issues.append(Issue(file=path, line=i, category="Security", severity="medium", description="yaml.load() without Loader — use yaml.safe_load() instead."))
+        # pickle
+        for i, line in enumerate(lines, 1):
+            if re.search(r"\bpickle\.(loads?|Unpickler)\s*\(", line):
+                issues.append(Issue(file=path, line=i, category="Security", severity="high", description="Insecure deserialization via pickle — can execute arbitrary code."))
+        # tempfile.mktemp
+        for i, line in enumerate(lines, 1):
+            if re.search(r"\btempfile\.mktemp\s*\(", line):
+                issues.append(Issue(file=path, line=i, category="Security", severity="medium", description="tempfile.mktemp() is insecure — use tempfile.mkstemp() instead."))
+
+    if language in ("javascript", "typescript"):
+        for i, line in enumerate(lines, 1):
+            for pattern, severity, desc in JS_SECURITY_PATTERNS:
+                if pattern.search(line):
+                    issues.append(Issue(file=path, line=i, category="Security", severity=severity, description=desc))
+
+    return issues
+
 def analyze(files: List[FileResult]) -> AnalysisReport:
     all_issues: List[Issue] = []
     total_lines = 0
@@ -179,6 +255,7 @@ def analyze(files: List[FileResult]) -> AnalysisReport:
         total_lines += f.line_count
         all_issues.extend(_detect_high_severity(f.content, f.path, f.language))
         all_issues.extend(_detect_medium_severity(f.content, f.path, f.language))
+        all_issues.extend(_detect_security(f.content, f.path, f.language))
 
     def score_for(category: str) -> int:
         cat_issues = [i for i in all_issues if i.category == category]
@@ -191,9 +268,10 @@ def analyze(files: List[FileResult]) -> AnalysisReport:
     scores = {
         "AI Slop": score_for("AI Slop"),
         "Code Quality": score_for("Code Quality"),
+        "Security": score_for("Security"),
         "Style": score_for("Style"),
     }
-    overall = round(scores["AI Slop"] * 0.5 + scores["Code Quality"] * 0.3 + scores["Style"] * 0.2)
+    overall = round(scores["AI Slop"] * 0.35 + scores["Code Quality"] * 0.25 + scores["Security"] * 0.25 + scores["Style"] * 0.15)
     scores["Overall"] = max(0, min(100, overall))
 
     return AnalysisReport(total_files=len(files), total_lines=total_lines, issues=all_issues, scores=scores)
@@ -516,6 +594,15 @@ ALLOWED_ORIGINS = {
     "http://127.0.0.1:3000",
 }
 
+def base64url_encode(data: str) -> str:
+    return base64.urlsafe_b64encode(data.encode()).rstrip(b"=").decode()
+
+def base64url_decode(data: str) -> str:
+    padding = 4 - len(data) % 4
+    if padding != 4:
+        data += "=" * padding
+    return base64.urlsafe_b64decode(data.encode()).decode()
+
 def set_cors_headers(handler_instance):
     origin = handler_instance.headers.get("Origin", "")
     if origin in ALLOWED_ORIGINS:
@@ -573,11 +660,10 @@ class handler(BaseHTTPRequestHandler):
                 report = analyze(files)
                 result = generate_roast(report, files)
 
-                import hashlib
-                result["id"] = hashlib.md5(url.encode()).hexdigest()[:12]
+                result["id"] = base64url_encode(f"{owner}/{repo}")
                 result["url"] = url
                 result["repo_name"] = f"{owner}/{repo}"
-                result["created_at"] = __import__("datetime").datetime.utcnow().isoformat() + "Z"
+                result["created_at"] = datetime.now(timezone.utc).isoformat()
 
                 _log(f"POST /api/roast done score={result['score']} issues={result['issues_count']}")
                 send_json(self, 200, result)
@@ -605,7 +691,48 @@ class handler(BaseHTTPRequestHandler):
             send_json(self, 400, {"error": "id parameter required"})
             return
 
-        send_json(self, 404, {"error": "Roast results are generated on-demand. Please roast this repo again to see results."})
+        # Decode the ID to recover owner/repo, then re-scan on demand
+        try:
+            repo_path = base64url_decode(roast_id)
+            parts = repo_path.split("/")
+            if len(parts) != 2 or not parts[0] or not parts[1]:
+                raise ValueError("Invalid repo path in ID")
+            owner, repo = parts
+            url = f"https://github.com/{owner}/{repo}"
+        except Exception:
+            send_json(self, 400, {"error": "Invalid roast ID"})
+            return
+
+        _log(f"GET /api/roast?id={roast_id} re-scanning {owner}/{repo}")
+
+        # Try main branch first, fall back to master
+        last_error = None
+        for ref in ("main", "master"):
+            try:
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    repo_disk_path = download_github_archive(owner, repo, ref, tmpdir)
+                    files = scan_repo(repo_disk_path, max_files=50)
+                    if not files:
+                        send_json(self, 404, {"error": "No scannable code files found for this repository."})
+                        return
+
+                    report = analyze(files)
+                    result = generate_roast(report, files)
+
+                    result["id"] = roast_id
+                    result["url"] = url
+                    result["repo_name"] = f"{owner}/{repo}"
+                    result["created_at"] = datetime.now(timezone.utc).isoformat()
+
+                    _log(f"GET /api/roast done score={result['score']} issues={result['issues_count']}")
+                    send_json(self, 200, result)
+                    return
+
+            except RuntimeError as e:
+                last_error = e
+                continue
+
+        send_json(self, 500, {"error": f"Failed to fetch repository: {last_error}"})
 
     def do_OPTIONS(self):
         self.send_response(200)
