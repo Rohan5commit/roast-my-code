@@ -2,10 +2,5 @@
   "framework": "nextjs",
   "installCommand": "npm install && cd web && npm install",
   "buildCommand": "cd web && npm run build",
-  "outputDirectory": "web/.next",
-  "functions": {
-    "api/roast.py": {
-      "maxDuration": 60
-    }
-  }
+  "outputDirectory": "web/.next"
 }
