@@ -4,14 +4,14 @@
   "buildCommand": "cd web && npm run build",
   "outputDirectory": "web/.next",
   "functions": {
-    "web/api/roast.py": {
+    "api/roast.py": {
       "maxDuration": 60
     }
   },
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "/web/api/roast.py"
+      "destination": "/api/roast.py"
     }
   ]
 }
