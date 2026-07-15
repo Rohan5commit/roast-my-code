@@ -17,7 +17,7 @@ dependencies = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["roast*", "web*"]
+include = ["roast*"]
 
 [project.scripts]
 roast = "roast.cli:app"
@@ -25,6 +25,3 @@ roast = "roast.cli:app"
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
-
-[tool.vercel]
-entrypoint = "web.api.roast:handler"
