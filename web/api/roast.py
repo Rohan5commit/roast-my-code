@@ -7,7 +7,7 @@ import urllib.request
 import urllib.error
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 
@@ -113,7 +113,7 @@ FAKE_IMPORTS = {"magiclib", "utils2", "codemancer", "autocodekit", "aihelpers"}
 PASSWORD_PATTERN = re.compile(r"(password|passwd|secret|api_key)\s*=\s*['\"][^'\"]+['\"]", re.IGNORECASE)
 CONSOLE_LOG_PATTERN = re.compile(r"console\.(log|warn|error)\(")
 LONG_LINE_THRESHOLD = 120
-LONG_FUNCTION_LINES = 50
+SENSITIVE_URL_PATTERN = re.compile(r"https?://[^\s\'\"]*(?:password|token|secret|key|credential)[^\s\'\"]*", re.IGNORECASE)
 
 # Security patterns
 SQL_INJECTION_PATTERN = re.compile(
@@ -186,8 +186,6 @@ def _detect_medium_severity(content: str, path: str, language: str) -> List[Issu
         if len(line) > LONG_LINE_THRESHOLD:
             issues.append(Issue(file=path, line=i, category="Style", severity="low", description=f"Line too long ({len(line)} chars)"))
 
-    # Only flag URLs that look like they contain credentials or sensitive paths
-    SENSITIVE_URL_PATTERN = re.compile(r"https?://[^\s\'\"]*(?:password|token|secret|key|credential)[^\s\'\"]*", re.IGNORECASE)
     if not is_test:
         for i, line in enumerate(lines, 1):
             stripped = line.strip()

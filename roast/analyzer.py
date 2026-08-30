@@ -18,7 +18,7 @@ STYLE = "Style"
 SECURITY = "Security"
 
 TODO_PATTERN = re.compile(r"#\s*(TODO|FIXME|HACK|XXX)\b", re.IGNORECASE)
-PLACEHOLDER_PATTERN = re.compile(r"\b(foo|bar|baz|temp|data2|result2|test123)\b")
+PLACEHOLDER_PATTERN = re.compile(r"\b(foo|baz|temp|data2|result2|test123)\b")
 COMMENTED_CODE_HINT = re.compile(
     r"\b(if|for|while|return|def|class|function|const|let|var|import|from)\b|[=;{}()]"
 )
@@ -38,6 +38,37 @@ LONG_JS_FUNCTION_PATTERN = re.compile(
 )
 BAD_FUNCTION_NAMES = {"handle_it", "do_stuff", "process_data", "helper"}
 FAKE_IMPORTS = {"magiclib", "utils2", "codemancer", "autocodekit", "aihelpers"}
+
+# --- Language-specific patterns ---
+
+# Go patterns
+GO_LONG_FUNCTION_PATTERN = re.compile(
+    r"\bfunc\s+(?:\([^)]*\)\s+)?(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*\([^)]*\)\s*(?:\([^)]*\)\s*)?\{"
+)
+GO_TODO_PATTERN = re.compile(r"//\s*(TODO|FIXME|HACK|XXX)\b", re.IGNORECASE)
+GO_CONSOLE_LOG_PATTERN = re.compile(r"\bfmt\.Print(f|ln)?\s*\(")
+
+# Rust patterns
+RUST_LONG_FUNCTION_PATTERN = re.compile(
+    r"\b(?:pub\s+)?(?:async\s+)?fn\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*(?:<[^>]*>)?\s*\([^)]*\)\s*(?:->\s*[^{]+)?\s*\{"
+)
+RUST_TODO_PATTERN = re.compile(r"//\s*(TODO|FIXME|HACK|XXX)\b", re.IGNORECASE)
+RUST_MACRO_PRINT = re.compile(r'\bprintln!\s*\(\s*"\s*"\s*\)')
+
+# Java patterns
+JAVA_LONG_FUNCTION_PATTERN = re.compile(
+    r"\b(?:(?:public|private|protected|static|final|abstract|synchronized)\s+)*\w+(?:<[^>]*>)?\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*\([^)]*\)\s*(?:throws\s+[\w,\s]+)?\s*\{"
+)
+JAVA_TODO_PATTERN = re.compile(r"//\s*(TODO|FIXME|HACK|XXX)\b", re.IGNORECASE)
+JAVA_SYS_OUT_PATTERN = re.compile(r"System\.out\.print(ln)?\s*")
+
+# Ruby patterns
+RUBY_LONG_FUNCTION_PATTERN = re.compile(
+    r"\b(?:def\s+)(?P<name>[A-Za-z_!?][A-Za-z0-9_!?]*)\s*(?:\([^)]*\))?\s*$"
+)
+RUBY_TODO_PATTERN = re.compile(r"#\s*(TODO|FIXME|HACK|XXX)\b", re.IGNORECASE)
+RUBY_PUTS_PATTERN = re.compile(r"\bputs\s+")
+RUBY_EVAL_PATTERN = re.compile(r"\beval\s*[(']")
 
 
 @dataclass(slots=True)
@@ -73,11 +104,13 @@ def _add_issue(
     category: str,
     severity: Severity,
     description: str,
+    line_offset: int = 0,
 ) -> None:
+    adjusted_line = (line + line_offset) if line is not None else None
     issues.append(
         Issue(
             file=file_path,
-            line=line,
+            line=adjusted_line,
             category=category,
             severity=severity,
             description=description,
@@ -105,7 +138,7 @@ def _iter_python_functions(tree: ast.AST) -> list[ast.FunctionDef | ast.AsyncFun
     return [node for node in ast.walk(tree) if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))]
 
 
-def _detect_python_high_severity(file: FileResult, issues: list[Issue], tree: ast.AST | None) -> None:
+def _detect_python_high_severity(file: FileResult, issues: list[Issue], tree: ast.AST | None, line_offset: int = 0) -> None:
     lines = file.content.splitlines()
     for idx, line in enumerate(lines, start=1):
         if TODO_PATTERN.search(line):
@@ -116,6 +149,7 @@ def _detect_python_high_severity(file: FileResult, issues: list[Issue], tree: as
                 AI_SLOP,
                 "high",
                 "Left a TODO/FIXME/HACK marker in code.",
+                line_offset=line_offset,
             )
 
     for idx, line in enumerate(lines, start=1):
@@ -127,6 +161,7 @@ def _detect_python_high_severity(file: FileResult, issues: list[Issue], tree: as
                 AI_SLOP,
                 "high",
                 "Placeholder identifier suggests unfinished AI-generated code.",
+                line_offset=line_offset,
             )
 
     if tree is None:
@@ -143,6 +178,7 @@ def _detect_python_high_severity(file: FileResult, issues: list[Issue], tree: as
                         AI_SLOP,
                         "high",
                         f"Suspicious hallucinated import: {alias.name}",
+                        line_offset=line_offset,
                     )
         elif isinstance(node, ast.ImportFrom):
             module = _module_from_import(node.module or "")
@@ -154,6 +190,7 @@ def _detect_python_high_severity(file: FileResult, issues: list[Issue], tree: as
                     AI_SLOP,
                     "high",
                     f"Suspicious hallucinated import: {node.module}",
+                    line_offset=line_offset,
                 )
 
     for fn in _iter_python_functions(tree):
@@ -165,6 +202,7 @@ def _detect_python_high_severity(file: FileResult, issues: list[Issue], tree: as
                 AI_SLOP,
                 "high",
                 f"Function name `{fn.name}` is generic AI-slop naming.",
+                line_offset=line_offset,
             )
 
     for node in ast.walk(tree):
@@ -179,10 +217,11 @@ def _detect_python_high_severity(file: FileResult, issues: list[Issue], tree: as
                     AI_SLOP,
                     "high",
                     "Empty except block swallows errors with pass.",
+                    line_offset=line_offset,
                 )
 
 
-def _detect_js_high_severity(file: FileResult, issues: list[Issue]) -> None:
+def _detect_js_high_severity(file: FileResult, issues: list[Issue], line_offset: int = 0) -> None:
     lines = file.content.splitlines()
 
     for idx, line in enumerate(lines, start=1):
@@ -194,6 +233,7 @@ def _detect_js_high_severity(file: FileResult, issues: list[Issue]) -> None:
                 AI_SLOP,
                 "high",
                 "Placeholder identifier suggests unfinished AI-generated code.",
+                line_offset=line_offset,
             )
 
     for idx, line in enumerate(lines, start=1):
@@ -205,6 +245,7 @@ def _detect_js_high_severity(file: FileResult, issues: list[Issue]) -> None:
                 AI_SLOP,
                 "high",
                 "Function name is overly generic AI-slop naming.",
+                line_offset=line_offset,
             )
         if re.search(
             r"\b(?:const|let|var)\s+(handle_it|do_stuff|process_data|helper)\s*=\s*(?:async\s+)?\([^)]*\)\s*=>",
@@ -217,6 +258,7 @@ def _detect_js_high_severity(file: FileResult, issues: list[Issue]) -> None:
                 AI_SLOP,
                 "high",
                 "Function name is overly generic AI-slop naming.",
+                line_offset=line_offset,
             )
 
     for idx, line in enumerate(lines, start=1):
@@ -230,10 +272,11 @@ def _detect_js_high_severity(file: FileResult, issues: list[Issue]) -> None:
                     AI_SLOP,
                     "high",
                     f"Suspicious hallucinated import: {module_name}",
+                    line_offset=line_offset,
                 )
 
 
-def _detect_commented_out_blocks(file: FileResult, issues: list[Issue]) -> None:
+def _detect_commented_out_blocks(file: FileResult, issues: list[Issue], line_offset: int = 0) -> None:
     lines = file.content.splitlines()
     start_line: int | None = None
     count = 0
@@ -248,6 +291,7 @@ def _detect_commented_out_blocks(file: FileResult, issues: list[Issue]) -> None:
                 AI_SLOP,
                 "high",
                 f"Commented-out code block appears to span {count} lines.",
+                line_offset=line_offset,
             )
         start_line = None
         count = 0
@@ -267,8 +311,8 @@ def _detect_commented_out_blocks(file: FileResult, issues: list[Issue]) -> None:
     flush()
 
 
-def _detect_python_medium_severity(file: FileResult, issues: list[Issue], tree: ast.AST | None, custom_rules: list[CustomRule]) -> None:
-    if file.line_count > 300:
+def _detect_python_medium_severity(file: FileResult, issues: list[Issue], tree: ast.AST | None, custom_rules: list[CustomRule], line_offset: int = 0, skip_large_file_check: bool = False) -> None:
+    if not skip_large_file_check and file.line_count > 300:
         _add_issue(
             issues,
             file.path,
@@ -283,7 +327,7 @@ def _detect_python_medium_severity(file: FileResult, issues: list[Issue], tree: 
         for idx, line in enumerate(lines, start=1):
             for rule in custom_rules:
                 if re.search(rule.pattern, line):
-                    _add_issue(issues, file.path, idx, rule.category, rule.severity, rule.message)
+                    _add_issue(issues, file.path, idx, rule.category, rule.severity, rule.message, line_offset=line_offset)
 
             if re.search(r"\bprint\s*\(", line):
                 _add_issue(
@@ -293,6 +337,7 @@ def _detect_python_medium_severity(file: FileResult, issues: list[Issue], tree: 
                     CODE_QUALITY,
                     "medium",
                     "print() statement found in non-test Python file.",
+                    line_offset=line_offset,
                 )
 
     for idx, line in enumerate(lines, start=1):
@@ -304,6 +349,7 @@ def _detect_python_medium_severity(file: FileResult, issues: list[Issue], tree: 
                 CODE_QUALITY,
                 "medium",
                 "Hardcoded URL string detected.",
+                line_offset=line_offset,
             )
         if PASSWORD_PATTERN.search(line):
             _add_issue(
@@ -313,6 +359,7 @@ def _detect_python_medium_severity(file: FileResult, issues: list[Issue], tree: 
                 CODE_QUALITY,
                 "medium",
                 "Possible hardcoded credential detected.",
+                line_offset=line_offset,
             )
 
     if tree is None:
@@ -328,6 +375,7 @@ def _detect_python_medium_severity(file: FileResult, issues: list[Issue], tree: 
                 CODE_QUALITY,
                 "medium",
                 f"Function `{fn.name}` exceeds 50 lines.",
+                line_offset=line_offset,
             )
 
     for node in ast.walk(tree):
@@ -350,11 +398,12 @@ def _detect_python_medium_severity(file: FileResult, issues: list[Issue], tree: 
             CODE_QUALITY,
             "medium",
             f"Magic number `{node.value}` found outside constant assignment.",
+            line_offset=line_offset,
         )
 
 
-def _detect_js_medium_severity(file: FileResult, issues: list[Issue]) -> None:
-    if file.line_count > 300:
+def _detect_js_medium_severity(file: FileResult, issues: list[Issue], line_offset: int = 0, skip_large_file_check: bool = False) -> None:
+    if not skip_large_file_check and file.line_count > 300:
         _add_issue(
             issues,
             file.path,
@@ -375,6 +424,7 @@ def _detect_js_medium_severity(file: FileResult, issues: list[Issue]) -> None:
                     CODE_QUALITY,
                     "medium",
                     "console.log() found in non-test JS/TS file.",
+                    line_offset=line_offset,
                 )
 
     for idx, line in enumerate(lines, start=1):
@@ -386,6 +436,7 @@ def _detect_js_medium_severity(file: FileResult, issues: list[Issue]) -> None:
                 CODE_QUALITY,
                 "medium",
                 "Hardcoded URL string detected.",
+                line_offset=line_offset,
             )
         if PASSWORD_PATTERN.search(line):
             _add_issue(
@@ -395,6 +446,7 @@ def _detect_js_medium_severity(file: FileResult, issues: list[Issue]) -> None:
                 CODE_QUALITY,
                 "medium",
                 "Possible hardcoded credential detected.",
+                line_offset=line_offset,
             )
 
     for idx, line in enumerate(lines, start=1):
@@ -409,12 +461,13 @@ def _detect_js_medium_severity(file: FileResult, issues: list[Issue]) -> None:
                     CODE_QUALITY,
                     "medium",
                     f"Magic number `{match.group(1)}` found outside constant assignment.",
+                    line_offset=line_offset,
                 )
 
-    _detect_long_js_functions(file, issues)
+    _detect_long_js_functions(file, issues, line_offset=line_offset)
 
 
-def _detect_long_js_functions(file: FileResult, issues: list[Issue]) -> None:
+def _detect_long_js_functions(file: FileResult, issues: list[Issue], line_offset: int = 0) -> None:
     lines = file.content.splitlines()
     index = 0
     while index < len(lines):
@@ -441,6 +494,7 @@ def _detect_long_js_functions(file: FileResult, issues: list[Issue]) -> None:
                 CODE_QUALITY,
                 "medium",
                 f"Function `{function_name}` exceeds 50 lines.",
+                line_offset=line_offset,
             )
         index = max(end_index + 1, index + 1)
 
@@ -465,7 +519,7 @@ def _collect_identifier_names(file: FileResult, tree: ast.AST | None) -> set[str
     return names
 
 
-def _detect_style_issues(file: FileResult, issues: list[Issue], tree: ast.AST | None) -> None:
+def _detect_style_issues(file: FileResult, issues: list[Issue], tree: ast.AST | None, line_offset: int = 0) -> None:
     names = _collect_identifier_names(file, tree)
     has_camel = any(CAMEL_CASE_PATTERN.match(name) for name in names)
     has_snake = any(SNAKE_CASE_PATTERN.match(name) for name in names)
@@ -488,6 +542,7 @@ def _detect_style_issues(file: FileResult, issues: list[Issue], tree: ast.AST | 
                 STYLE,
                 "low",
                 "Line exceeds 120 characters.",
+                line_offset=line_offset,
             )
 
     if file.language != "python" or tree is None:
@@ -504,6 +559,7 @@ def _detect_style_issues(file: FileResult, issues: list[Issue], tree: ast.AST | 
                 STYLE,
                 "low",
                 f"Public function `{fn.name}` is missing a docstring.",
+                line_offset=line_offset,
             )
 
 
@@ -515,6 +571,153 @@ def _compute_score_for_category(issues: list[Issue], category: str) -> int:
     return max(0, raw)
 
 
+def _line_offset(file: FileResult) -> int:
+    """Return the line offset to apply for chunked files (0-based)."""
+    return file.chunk_start - 1 if file.chunk_start > 1 else 0
+
+
+def _detect_generic_language_high_severity(file: FileResult, issues: list[Issue], line_offset: int = 0) -> None:
+    """Detect high-severity AI slop issues across all languages (TODOs, placeholders)."""
+    todo_pattern = {
+        "python": TODO_PATTERN,
+        "go": GO_TODO_PATTERN,
+        "rust": RUST_TODO_PATTERN,
+        "java": JAVA_TODO_PATTERN,
+        "ruby": RUBY_TODO_PATTERN,
+    }.get(file.language, TODO_PATTERN)
+
+    lines = file.content.splitlines()
+    for idx, line in enumerate(lines, start=1):
+        if todo_pattern.search(line):
+            _add_issue(
+                issues, file.path, idx, AI_SLOP, "high",
+                "Left a TODO/FIXME/HACK marker in code.",
+                line_offset=line_offset,
+            )
+        if PLACEHOLDER_PATTERN.search(line):
+            _add_issue(
+                issues, file.path, idx, AI_SLOP, "high",
+                "Placeholder identifier suggests unfinished AI-generated code.",
+                line_offset=line_offset,
+            )
+
+
+def _detect_go_medium_severity(file: FileResult, issues: list[Issue], line_offset: int = 0) -> None:
+    """Detect code quality issues in Go files."""
+    lines = file.content.splitlines()
+    for idx, line in enumerate(lines, start=1):
+        if GO_CONSOLE_LOG_PATTERN.search(line):
+            if not is_test_file(file.path):
+                _add_issue(
+                    issues, file.path, idx, CODE_QUALITY, "medium",
+                    "fmt.Print/Println left in non-test Go file.",
+                    line_offset=line_offset,
+                )
+        if URL_IN_QUOTES_PATTERN.search(line):
+            _add_issue(
+                issues, file.path, idx, CODE_QUALITY, "medium",
+                "Hardcoded URL string detected.",
+                line_offset=line_offset,
+            )
+        if PASSWORD_PATTERN.search(line):
+            _add_issue(
+                issues, file.path, idx, CODE_QUALITY, "medium",
+                "Possible hardcoded credential detected.",
+                line_offset=line_offset,
+            )
+        # Magic numbers (skip common Go patterns like port numbers in const blocks)
+        if not line.strip().startswith("//"):
+            for match in LINE_MAGIC_INT_PATTERN.finditer(line):
+                val = int(match.group(1))
+                if val > 9 and not line.strip().startswith("const"):
+                    _add_issue(
+                        issues, file.path, idx, CODE_QUALITY, "medium",
+                        f"Magic number `{match.group(1)}` found.",
+                        line_offset=line_offset,
+                    )
+
+
+def _detect_rust_medium_severity(file: FileResult, issues: list[Issue], line_offset: int = 0) -> None:
+    """Detect code quality issues in Rust files."""
+    lines = file.content.splitlines()
+    for idx, line in enumerate(lines, start=1):
+        if RUST_MACRO_PRINT.search(line):
+            if not is_test_file(file.path):
+                _add_issue(
+                    issues, file.path, idx, CODE_QUALITY, "medium",
+                    "Empty println! macro left in non-test Rust file.",
+                    line_offset=line_offset,
+                )
+        if URL_IN_QUOTES_PATTERN.search(line):
+            _add_issue(
+                issues, file.path, idx, CODE_QUALITY, "medium",
+                "Hardcoded URL string detected.",
+                line_offset=line_offset,
+            )
+        if PASSWORD_PATTERN.search(line):
+            _add_issue(
+                issues, file.path, idx, CODE_QUALITY, "medium",
+                "Possible hardcoded credential detected.",
+                line_offset=line_offset,
+            )
+
+
+def _detect_java_medium_severity(file: FileResult, issues: list[Issue], line_offset: int = 0) -> None:
+    """Detect code quality issues in Java files."""
+    lines = file.content.splitlines()
+    for idx, line in enumerate(lines, start=1):
+        if JAVA_SYS_OUT_PATTERN.search(line):
+            if not is_test_file(file.path):
+                _add_issue(
+                    issues, file.path, idx, CODE_QUALITY, "medium",
+                    "System.out.print/println left in non-test Java file.",
+                    line_offset=line_offset,
+                )
+        if URL_IN_QUOTES_PATTERN.search(line):
+            _add_issue(
+                issues, file.path, idx, CODE_QUALITY, "medium",
+                "Hardcoded URL string detected.",
+                line_offset=line_offset,
+            )
+        if PASSWORD_PATTERN.search(line):
+            _add_issue(
+                issues, file.path, idx, CODE_QUALITY, "medium",
+                "Possible hardcoded credential detected.",
+                line_offset=line_offset,
+            )
+
+
+def _detect_ruby_medium_severity(file: FileResult, issues: list[Issue], line_offset: int = 0) -> None:
+    """Detect code quality issues in Ruby files."""
+    lines = file.content.splitlines()
+    for idx, line in enumerate(lines, start=1):
+        if RUBY_PUTS_PATTERN.search(line):
+            if not is_test_file(file.path):
+                _add_issue(
+                    issues, file.path, idx, CODE_QUALITY, "medium",
+                    "puts statement left in non-test Ruby file.",
+                    line_offset=line_offset,
+                )
+        if RUBY_EVAL_PATTERN.search(line):
+            _add_issue(
+                issues, file.path, idx, CODE_QUALITY, "medium",
+                "eval() usage in Ruby — potential code injection.",
+                line_offset=line_offset,
+            )
+        if URL_IN_QUOTES_PATTERN.search(line):
+            _add_issue(
+                issues, file.path, idx, CODE_QUALITY, "medium",
+                "Hardcoded URL string detected.",
+                line_offset=line_offset,
+            )
+        if PASSWORD_PATTERN.search(line):
+            _add_issue(
+                issues, file.path, idx, CODE_QUALITY, "medium",
+                "Possible hardcoded credential detected.",
+                line_offset=line_offset,
+            )
+
+
 def analyze(files: list[FileResult]) -> AnalysisReport:
     """Analyze scanned files and return issues and scoring."""
     issues: list[Issue] = []
@@ -524,52 +727,55 @@ def analyze(files: list[FileResult]) -> AnalysisReport:
     # security.py imports from analyzer.py, so we defer this import.
     from roast.security import detect_security_issues  # noqa: E402
 
+    # Track which chunked files we've already emitted a "large file" warning for.
+    large_file_warned: set[str] = set()
+
     for file in files:
+        offset = _line_offset(file)
+        is_chunk = file.original_line_count > 0
+
+        # Emit a single "large file" warning for the original file, not per chunk.
+        if is_chunk and file.path not in large_file_warned:
+            large_file_warned.add(file.path)
+            _add_issue(
+                issues,
+                file.path,
+                None,
+                CODE_QUALITY,
+                "medium",
+                f"Large file ({file.original_line_count} lines) hurts maintainability.",
+            )
+
         tree: ast.AST | None = None
         if file.language == "python":
             tree = _safe_parse_python(file.content)
 
         if file.language == "python":
-            _detect_python_high_severity(file, issues, tree)
-            _detect_python_medium_severity(file, issues, tree, custom_rules)
+            _detect_python_high_severity(file, issues, tree, line_offset=offset)
+            # Don't re-detect "large file" inside medium severity — we already did it above.
+            _detect_python_medium_severity(file, issues, tree, custom_rules, line_offset=offset, skip_large_file_check=is_chunk)
         elif file.language in {"javascript", "typescript"}:
-            _detect_js_high_severity(file, issues)
-            _detect_js_medium_severity(file, issues)
+            _detect_js_high_severity(file, issues, line_offset=offset)
+            _detect_js_medium_severity(file, issues, line_offset=offset, skip_large_file_check=is_chunk)
+        elif file.language == "go":
+            _detect_generic_language_high_severity(file, issues, line_offset=offset)
+            _detect_go_medium_severity(file, issues, line_offset=offset)
+        elif file.language == "rust":
+            _detect_generic_language_high_severity(file, issues, line_offset=offset)
+            _detect_rust_medium_severity(file, issues, line_offset=offset)
+        elif file.language == "java":
+            _detect_generic_language_high_severity(file, issues, line_offset=offset)
+            _detect_java_medium_severity(file, issues, line_offset=offset)
+        elif file.language == "ruby":
+            _detect_generic_language_high_severity(file, issues, line_offset=offset)
+            _detect_ruby_medium_severity(file, issues, line_offset=offset)
         else:
-            lines = file.content.splitlines()
-            for idx, line in enumerate(lines, start=1):
-                if PLACEHOLDER_PATTERN.search(line):
-                    _add_issue(
-                        issues,
-                        file.path,
-                        idx,
-                        AI_SLOP,
-                        "high",
-                        "Placeholder identifier suggests unfinished AI-generated code.",
-                    )
-                if URL_IN_QUOTES_PATTERN.search(line):
-                    _add_issue(
-                        issues,
-                        file.path,
-                        idx,
-                        CODE_QUALITY,
-                        "medium",
-                        "Hardcoded URL string detected.",
-                    )
-                if PASSWORD_PATTERN.search(line):
-                    _add_issue(
-                        issues,
-                        file.path,
-                        idx,
-                        CODE_QUALITY,
-                        "medium",
-                        "Possible hardcoded credential detected.",
-                    )
+            _detect_generic_language_high_severity(file, issues, line_offset=offset)
 
-        _detect_commented_out_blocks(file, issues)
-        _detect_style_issues(file, issues, tree)
+        _detect_commented_out_blocks(file, issues, line_offset=offset)
+        _detect_style_issues(file, issues, tree, line_offset=offset)
 
-        detect_security_issues(file, issues, tree)
+        detect_security_issues(file, issues, tree, line_offset=offset)
 
     slop_score = _compute_score_for_category(issues, AI_SLOP)
     quality_score = _compute_score_for_category(issues, CODE_QUALITY)
@@ -584,9 +790,12 @@ def analyze(files: list[FileResult]) -> AnalysisReport:
         STYLE: style_score,
         "Overall": overall_score,
     }
+
+    # Count unique original files, not chunks.
+    unique_files = len({file.path for file in files})
     return AnalysisReport(
-        total_files=len(files),
-        total_lines=sum(file.line_count for file in files),
+        total_files=unique_files,
+        total_lines=sum(file.original_line_count if file.original_line_count > 0 else file.line_count for file in files),
         issues=issues,
         scores=scores,
     )
