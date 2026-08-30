@@ -107,8 +107,9 @@ def scan_repo(path: str, max_files: int = 50) -> List[FileResult]:
 # ============================================================
 
 TODO_PATTERN = re.compile(r"#\s*(TODO|FIXME|HACK|XXX)\b", re.IGNORECASE)
-# Match placeholder names used as standalone identifiers (variable/function names)
-PLACEHOLDER_PATTERN = re.compile(r"\b(?:def|class|let|const|var)\s+(?:foo|bar|baz|temp|data2|result2|test123)\b|^\s*(?:foo|bar|baz|temp|data2|result2|test123)\s*=", re.MULTILINE)
+# Match placeholder names used as variable/function declarations
+# Removed 'bar' — too common a word (tqdm, matplotlib, etc.)
+PLACEHOLDER_PATTERN = re.compile(r"\b(?:def|class|let|const|var)\s+(?:foo|baz|temp|data2|result2|test123)\b|^\s*(?:foo|baz|temp|data2|result2|test123)\s*=", re.MULTILINE)
 FAKE_IMPORTS = {"magiclib", "utils2", "codemancer", "autocodekit", "aihelpers"}
 PASSWORD_PATTERN = re.compile(r"(password|passwd|secret|api_key)\s*=\s*['\"][^'\"]+['\"]", re.IGNORECASE)
 URL_PATTERN = re.compile(r"(https?://[^\s'\"]+)")
@@ -200,6 +201,9 @@ def _detect_medium_severity(content: str, path: str, language: str) -> List[Issu
 def _detect_security(content: str, path: str, language: str) -> List[Issue]:
     issues = []
     lines = content.split("\n")
+    # Skip security checks for test files — they intentionally contain dangerous patterns
+    if _is_test_file(path):
+        return issues
 
     # Hardcoded secrets (language-agnostic)
     for i, line in enumerate(lines, 1):
