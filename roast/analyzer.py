@@ -7,7 +7,7 @@ import ast
 import re
 from typing import Literal
 
-from roast.scanner import FileResult
+from roast.scanner import FileResult, is_test_file
 from roast.custom_rules import load_custom_rules, CustomRule
 
 Severity = Literal["low", "medium", "high"]
@@ -85,9 +85,7 @@ def _add_issue(
     )
 
 
-def _is_test_file(path: str) -> bool:
-    lowered = path.lower()
-    return "test" in lowered or "/tests/" in lowered or lowered.startswith("tests/")
+# _is_test_file is now imported from roast.scanner as is_test_file
 
 
 def _module_from_import(import_name: str) -> str:
@@ -281,7 +279,7 @@ def _detect_python_medium_severity(file: FileResult, issues: list[Issue], tree: 
         )
 
     lines = file.content.splitlines()
-    if not _is_test_file(file.path):
+    if not is_test_file(file.path):
         for idx, line in enumerate(lines, start=1):
             for rule in custom_rules:
                 if re.search(rule.pattern, line):
@@ -367,7 +365,7 @@ def _detect_js_medium_severity(file: FileResult, issues: list[Issue]) -> None:
         )
 
     lines = file.content.splitlines()
-    if not _is_test_file(file.path):
+    if not is_test_file(file.path):
         for idx, line in enumerate(lines, start=1):
             if "console.log(" in line:
                 _add_issue(
@@ -522,8 +520,9 @@ def analyze(files: list[FileResult]) -> AnalysisReport:
     issues: list[Issue] = []
     custom_rules = load_custom_rules()
 
-    # Lazy import to avoid circular dependency
-    from roast.security import detect_security_issues
+    # Import here to avoid circular dependency at module level.
+    # security.py imports from analyzer.py, so we defer this import.
+    from roast.security import detect_security_issues  # noqa: E402
 
     for file in files:
         tree: ast.AST | None = None

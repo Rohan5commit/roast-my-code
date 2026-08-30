@@ -67,10 +67,25 @@ def _github_headers() -> dict[str, str]:
 
 
 def _extract_archive_root(temp_dir_path: Path) -> Path:
-    extracted_dirs = [child for child in temp_dir_path.iterdir() if child.is_dir()]
-    if len(extracted_dirs) != 1:
-        raise RuntimeError("GitHub archive had an unexpected layout.")
-    return extracted_dirs[0]
+    """Return the single top-level directory inside the extracted archive.
+
+    GitHub zipball archives always contain one root directory.  If the layout
+    is unexpected we raise with a helpful diagnostic instead of crashing with
+    an opaque ``iterdir`` list.
+    """
+    entries = list(temp_dir_path.iterdir())
+    dirs = [e for e in entries if e.is_dir()]
+    if len(dirs) == 1:
+        return dirs[0]
+    if not entries:
+        raise RuntimeError(
+            "GitHub archive was extracted but the directory is empty."
+        )
+    names = ", ".join(e.name for e in entries[:10])
+    raise RuntimeError(
+        f"GitHub archive had an unexpected layout "
+        f"({len(dirs)} directories, {len(entries)} total entries: {names})."
+    )
 
 
 def _download_github_archive(
@@ -238,8 +253,9 @@ def roast(
         console.print(Panel(str(exc), title="Configuration Error", border_style="red"))
         raise typer.Exit(code=1)
 
+    # "--provider none" is an explicit way to disable LLM, equivalent to --no-llm.
     if provider == "none":
-        provider = "auto"
+        no_llm = True
 
     if not no_llm and not _has_any_configured_llm_key(provider, backup_provider):
         console.print(
@@ -309,8 +325,8 @@ def roast(
                 "overall_score": report.scores.get("Overall", 0),
                 "verdict": roast_result.verdict,
             })
-        except Exception:
-            pass
+        except Exception as exc:  # noqa: BLE001
+            LOGGER.debug("Failed to save scan history: %s", exc)
 
         if json_output:
             console.print(f"[bold cyan]JSON report saved to: {Path(json_output).expanduser()}[/]")
