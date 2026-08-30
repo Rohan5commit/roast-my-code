@@ -149,12 +149,8 @@ def _detect_high_severity(content: str, path: str, language: str) -> List[Issue]
     lines = content.split("\n")
     is_test = _is_test_file(path)
 
-    # Skip AI Slop checks for test files — TODOs and placeholder names are normal there
+    # Skip AI Slop checks for test files — placeholder names are normal there
     if not is_test:
-        for i, line in enumerate(lines, 1):
-            if TODO_PATTERN.search(line):
-                issues.append(Issue(file=path, line=i, category="AI Slop", severity="high", description="TODO/FIXME/HACK marker found"))
-
         for i, line in enumerate(lines, 1):
             if PLACEHOLDER_PATTERN.search(line):
                 issues.append(Issue(file=path, line=i, category="AI Slop", severity="high", description=f"Placeholder name detected: {line.strip()[:60]}"))
@@ -178,13 +174,8 @@ def _detect_medium_severity(content: str, path: str, language: str) -> List[Issu
     line_count = len(lines)
     is_test = _is_test_file(path)
 
-    if line_count > 300:
+    if line_count > 500:
         issues.append(Issue(file=path, line=None, category="Code Quality", severity="medium", description=f"Large file: {line_count} lines"))
-
-    if language == "python" and not is_test:
-        for i, line in enumerate(lines, 1):
-            if PRINT_PATTERN.search(line):
-                issues.append(Issue(file=path, line=i, category="Code Quality", severity="medium", description="print() statement in non-test code"))
 
     if language in ("javascript", "typescript") and not is_test:
         for i, line in enumerate(lines, 1):
@@ -195,11 +186,13 @@ def _detect_medium_severity(content: str, path: str, language: str) -> List[Issu
         if len(line) > LONG_LINE_THRESHOLD:
             issues.append(Issue(file=path, line=i, category="Style", severity="low", description=f"Line too long ({len(line)} chars)"))
 
+    # Only flag URLs that look like they contain credentials or sensitive paths
+    SENSITIVE_URL_PATTERN = re.compile(r"https?://[^\s\'\"]*(?:password|token|secret|key|credential)[^\s\'\"]*", re.IGNORECASE)
     if not is_test:
         for i, line in enumerate(lines, 1):
             stripped = line.strip()
-            if URL_PATTERN.search(line) and ("'" in stripped or '"' in stripped) and not stripped.startswith("#"):
-                issues.append(Issue(file=path, line=i, category="Code Quality", severity="medium", description="Hardcoded URL found"))
+            if SENSITIVE_URL_PATTERN.search(line) and not stripped.startswith("#"):
+                issues.append(Issue(file=path, line=i, category="Security", severity="high", description="URL may contain credentials"))
 
     return issues
 
