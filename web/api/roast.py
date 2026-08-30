@@ -123,11 +123,12 @@ SQL_INJECTION_PATTERN = re.compile(
     re.IGNORECASE,
 )
 HARDCODED_SECRET_PATTERNS = [
-    (re.compile(r"password\s*=\s*['\"][^'\"]+['\"]", re.IGNORECASE), "Hardcoded password detected."),
-    (re.compile(r"api_key\s*=\s*['\"][^'\"]+['\"]", re.IGNORECASE), "Hardcoded API key detected."),
-    (re.compile(r"secret\s*=\s*['\"][^'\"]+['\"]", re.IGNORECASE), "Hardcoded secret detected."),
-    (re.compile(r"token\s*=\s*['\"][^'\"]+['\"]", re.IGNORECASE), "Hardcoded token detected."),
-    (re.compile(r"aws_secret_access_key\s*=\s*['\"][^'\"]+['\"]", re.IGNORECASE), "AWS secret access key hardcoded."),
+    # Only match at start of line (variable assignments), not inside strings
+    (re.compile(r"^\s*password\s*=\s*['\"][^'\"]+['\"]", re.IGNORECASE | re.MULTILINE), "Hardcoded password detected."),
+    (re.compile(r"^\s*api_key\s*=\s*['\"][^'\"]+['\"]", re.IGNORECASE | re.MULTILINE), "Hardcoded API key detected."),
+    (re.compile(r"^\s*secret\s*=\s*['\"][^'\"]+['\"]", re.IGNORECASE | re.MULTILINE), "Hardcoded secret detected."),
+    (re.compile(r"^\s*token\s*=\s*['\"][^'\"]+['\"]", re.IGNORECASE | re.MULTILINE), "Hardcoded token detected."),
+    (re.compile(r"^\s*aws_secret_access_key\s*=\s*['\"][^'\"]+['\"]", re.IGNORECASE | re.MULTILINE), "AWS secret access key hardcoded."),
     (re.compile(r"-----BEGIN (?:RSA |EC )?PRIVATE KEY-----"), "Exposed private key in source code."),
 ]
 JS_SECURITY_PATTERNS = [
