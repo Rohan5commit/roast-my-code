@@ -6,7 +6,7 @@ import ast
 import re
 
 from roast.analyzer import Issue, SECURITY, _add_issue
-from roast.scanner import FileResult
+from roast.scanner import FileResult, is_test_file
 
 # ---------------------------------------------------------------------------
 # Regex patterns (language-agnostic)
@@ -143,7 +143,7 @@ def _detect_python_security_ast(
 
         # assert used for validation in non-test files
         if isinstance(node, ast.Assert):
-            if not _is_test_file(file.path):
+            if not is_test_file(file.path):
                 _add_issue(
                     issues,
                     file.path,
@@ -251,11 +251,6 @@ def _has_loader_argument(node: ast.Call) -> bool:
     if len(node.args) >= 2:
         return True
     return False
-
-
-def _is_test_file(path: str) -> bool:
-    lowered = path.lower()
-    return "test" in lowered or "/tests/" in lowered or lowered.startswith("tests/")
 
 
 # ---------------------------------------------------------------------------

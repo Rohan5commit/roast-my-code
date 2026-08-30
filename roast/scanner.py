@@ -93,6 +93,12 @@ def _should_skip_path(path: Path) -> bool:
     return name == ".env" or name.startswith(".env.")
 
 
+def is_test_file(path: str) -> bool:
+    """Return True if *path* looks like a test file or lives in a tests dir."""
+    lowered = path.lower()
+    return "test" in lowered or "/tests/" in lowered or lowered.startswith("tests/")
+
+
 def scan_repo(
     path: str | Path,
     extensions: Iterable[str],
