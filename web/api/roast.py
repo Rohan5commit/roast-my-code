@@ -645,31 +645,42 @@ class handler(BaseHTTPRequestHandler):
             send_json(self, 400, {"error": "Invalid GitHub URL. Expected format: https://github.com/owner/repo"})
             return
 
-        _log(f"POST /api/roast url={url}")
+        _log(f"POST /api/roast url={url} ref={ref}")
 
-        try:
-            with tempfile.TemporaryDirectory() as tmpdir:
-                repo_path = download_github_archive(owner, repo, ref, tmpdir)
-                files = scan_repo(repo_path, max_files=50)
-                if not files:
-                    send_json(self, 400, {"error": "No scannable code files found."})
+        # Try the specified ref first, then fall back to main/master
+        refs_to_try = [ref] if ref else []
+        if ref != "main":
+            refs_to_try.append("main")
+        if ref != "master":
+            refs_to_try.append("master")
+
+        last_error = None
+        for try_ref in refs_to_try:
+            try:
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    repo_path = download_github_archive(owner, repo, try_ref, tmpdir)
+                    files = scan_repo(repo_path, max_files=50)
+                    if not files:
+                        send_json(self, 400, {"error": "No scannable code files found."})
+                        return
+
+                    report = analyze(files)
+                    result = generate_roast(report, files)
+
+                    result["id"] = base64url_encode(f"{owner}/{repo}")
+                    result["url"] = url
+                    result["repo_name"] = f"{owner}/{repo}"
+                    result["created_at"] = datetime.now(timezone.utc).isoformat()
+
+                    _log(f"POST /api/roast done score={result['score']} issues={result['issues_count']}")
+                    send_json(self, 200, result)
                     return
 
-                report = analyze(files)
-                result = generate_roast(report, files)
+            except RuntimeError as e:
+                last_error = e
+                continue
 
-                result["id"] = base64url_encode(f"{owner}/{repo}")
-                result["url"] = url
-                result["repo_name"] = f"{owner}/{repo}"
-                result["created_at"] = datetime.now(timezone.utc).isoformat()
-
-                _log(f"POST /api/roast done score={result['score']} issues={result['issues_count']}")
-                send_json(self, 200, result)
-
-        except RuntimeError as e:
-            send_json(self, 500, {"error": str(e)})
-        except Exception:
-            send_json(self, 500, {"error": "An unexpected error occurred during analysis."})
+        send_json(self, 500, {"error": str(last_error)})
 
     def do_GET(self):
         from urllib.parse import urlparse, parse_qs
