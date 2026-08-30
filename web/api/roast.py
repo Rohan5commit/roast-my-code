@@ -107,7 +107,8 @@ def scan_repo(path: str, max_files: int = 50) -> List[FileResult]:
 # ============================================================
 
 TODO_PATTERN = re.compile(r"#\s*(TODO|FIXME|HACK|XXX)\b", re.IGNORECASE)
-PLACEHOLDER_PATTERN = re.compile(r"\b(foo|bar|baz|temp|data2|result2|test123)\b")
+# Match placeholder names used as standalone identifiers (variable/function names)
+PLACEHOLDER_PATTERN = re.compile(r"\b(?:def|class|let|const|var)\s+(?:foo|bar|baz|temp|data2|result2|test123)\b|^\s*(?:foo|bar|baz|temp|data2|result2|test123)\s*=", re.MULTILINE)
 FAKE_IMPORTS = {"magiclib", "utils2", "codemancer", "autocodekit", "aihelpers"}
 PASSWORD_PATTERN = re.compile(r"(password|passwd|secret|api_key)\s*=\s*['\"][^'\"]+['\"]", re.IGNORECASE)
 URL_PATTERN = re.compile(r"(https?://[^\s'\"]+)")
@@ -140,7 +141,7 @@ JS_SECURITY_PATTERNS = [
     (re.compile(r"\bMath\.random\s*\("), "medium", "Math.random() is not cryptographically secure."),
     (re.compile(r"document\.cookie\s*="), "high", "Direct cookie manipulation without security flags."),
 ]
-PY_DANGEROUS_CALLS = {"eval": True, "exec": True, "compile": True, "__import__": True}
+PY_DANGEROUS_CALLS = {"eval": True, "exec": True}
 PY_SHELL_CALLS = {"system", "popen"}
 
 def _detect_high_severity(content: str, path: str, language: str) -> List[Issue]:
@@ -148,12 +149,15 @@ def _detect_high_severity(content: str, path: str, language: str) -> List[Issue]
     lines = content.split("\n")
     is_test = _is_test_file(path)
 
-    for i, line in enumerate(lines, 1):
-        if TODO_PATTERN.search(line):
-            issues.append(Issue(file=path, line=i, category="AI Slop", severity="high", description="TODO/FIXME/HACK marker found"))
+    # Skip AI Slop checks for test files — TODOs and placeholder names are normal there
+    if not is_test:
+        for i, line in enumerate(lines, 1):
+            if TODO_PATTERN.search(line):
+                issues.append(Issue(file=path, line=i, category="AI Slop", severity="high", description="TODO/FIXME/HACK marker found"))
 
-        if PLACEHOLDER_PATTERN.search(line):
-            issues.append(Issue(file=path, line=i, category="AI Slop", severity="high", description=f"Placeholder name detected: {line.strip()[:60]}"))
+        for i, line in enumerate(lines, 1):
+            if PLACEHOLDER_PATTERN.search(line):
+                issues.append(Issue(file=path, line=i, category="AI Slop", severity="high", description=f"Placeholder name detected: {line.strip()[:60]}"))
 
         if PASSWORD_PATTERN.search(line):
             issues.append(Issue(file=path, line=i, category="Code Quality", severity="medium", description="Hardcoded password/secret/key detected"))
