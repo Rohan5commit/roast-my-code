@@ -106,15 +106,12 @@ def scan_repo(path: str, max_files: int = 50) -> List[FileResult]:
 # Analyzer
 # ============================================================
 
-TODO_PATTERN = re.compile(r"#\s*(TODO|FIXME|HACK|XXX)\b", re.IGNORECASE)
 # Match placeholder names used as variable/function declarations
 # Removed 'bar' — too common a word (tqdm, matplotlib, etc.)
 PLACEHOLDER_PATTERN = re.compile(r"\b(?:def|class|let|const|var)\s+(?:foo|baz|temp|data2|result2|test123)\b|^\s*(?:foo|baz|temp|data2|result2|test123)\s*=", re.MULTILINE)
 FAKE_IMPORTS = {"magiclib", "utils2", "codemancer", "autocodekit", "aihelpers"}
 PASSWORD_PATTERN = re.compile(r"(password|passwd|secret|api_key)\s*=\s*['\"][^'\"]+['\"]", re.IGNORECASE)
-URL_PATTERN = re.compile(r"(https?://[^\s'\"]+)")
 CONSOLE_LOG_PATTERN = re.compile(r"console\.(log|warn|error)\(")
-PRINT_PATTERN = re.compile(r"\bprint\(")
 LONG_LINE_THRESHOLD = 120
 LONG_FUNCTION_LINES = 50
 
@@ -157,8 +154,9 @@ def _detect_high_severity(content: str, path: str, language: str) -> List[Issue]
             if PLACEHOLDER_PATTERN.search(line):
                 issues.append(Issue(file=path, line=i, category="AI Slop", severity="high", description=f"Placeholder name detected: {line.strip()[:60]}"))
 
-        if PASSWORD_PATTERN.search(line):
-            issues.append(Issue(file=path, line=i, category="Code Quality", severity="medium", description="Hardcoded password/secret/key detected"))
+        for i, line in enumerate(lines, 1):
+            if PASSWORD_PATTERN.search(line):
+                issues.append(Issue(file=path, line=i, category="Code Quality", severity="medium", description="Hardcoded password/secret/key detected"))
 
     if language == "python":
         for i, line in enumerate(lines, 1):

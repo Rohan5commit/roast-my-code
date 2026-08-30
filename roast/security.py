@@ -13,11 +13,12 @@ from roast.scanner import FileResult, is_test_file
 # ---------------------------------------------------------------------------
 
 HARDCODED_SECRET_PATTERNS = [
-    (re.compile(r"password\s*=\s*[\"'][^\"']+[\"']", re.IGNORECASE), "Hardcoded password detected."),
-    (re.compile(r"api_key\s*=\s*[\"'][^\"']+[\"']", re.IGNORECASE), "Hardcoded API key detected."),
-    (re.compile(r"secret\s*=\s*[\"'][^\"']+[\"']", re.IGNORECASE), "Hardcoded secret detected."),
-    (re.compile(r"token\s*=\s*[\"'][^\"']+[\"']", re.IGNORECASE), "Hardcoded token detected."),
-    (re.compile(r"aws_secret_access_key\s*=\s*[\"'][^\"']+[\"']", re.IGNORECASE), "AWS secret access key hardcoded."),
+    # Only match at start of line (variable assignments), not inside strings
+    (re.compile(r"^\s*password\s*=\s*[\"'][^\"']+[\"']", re.IGNORECASE | re.MULTILINE), "Hardcoded password detected."),
+    (re.compile(r"^\s*api_key\s*=\s*[\"'][^\"']+[\"']", re.IGNORECASE | re.MULTILINE), "Hardcoded API key detected."),
+    (re.compile(r"^\s*secret\s*=\s*[\"'][^\"']+[\"']", re.IGNORECASE | re.MULTILINE), "Hardcoded secret detected."),
+    (re.compile(r"^\s*token\s*=\s*[\"'][^\"']+[\"']", re.IGNORECASE | re.MULTILINE), "Hardcoded token detected."),
+    (re.compile(r"^\s*aws_secret_access_key\s*=\s*[\"'][^\"']+[\"']", re.IGNORECASE | re.MULTILINE), "AWS secret access key hardcoded."),
     (re.compile(r"-----BEGIN (?:RSA |EC )?PRIVATE KEY-----"), "Exposed private key in source code."),
 ]
 
@@ -43,6 +44,59 @@ _SHELL_INJECTION_CALLS = {"system", "popen"}
 # JavaScript / TypeScript patterns
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Go patterns
+# ---------------------------------------------------------------------------
+
+GO_SECURITY_PATTERNS = [
+    (re.compile(r"\bos\.exec\s*\("), "high", "os/exec usage — verify no shell injection."),
+    (re.compile(r"\bexec\.Command\s*\("), "medium", "exec.Command usage — validate arguments carefully."),
+    (re.compile(r"\bhttp\.ListenAndServe\s*\("), "medium", "HTTP server without TLS — traffic sent in plaintext."),
+    (re.compile(r"\bsql\.Open\s*\("), "medium", "SQL database connection — use parameterized queries."),
+]
+
+# ---------------------------------------------------------------------------
+# Rust patterns
+# ---------------------------------------------------------------------------
+
+RUST_SECURITY_PATTERNS = [
+    (re.compile(r"\bunsafe\s*\{"), "high", "Unsafe block detected — verify memory safety invariants."),
+    (re.compile(r"\bunsafe\s+fn\b"), "high", "Unsafe function definition — verify memory safety invariants."),
+    (re.compile(r"\bstd::process::Command\b"), "medium", "Process command execution — validate arguments for injection."),
+    (re.compile(r"\braw pointer\b"), "high", "Raw pointer usage — potential memory safety issue."),
+]
+
+# ---------------------------------------------------------------------------
+# Java patterns
+# ---------------------------------------------------------------------------
+
+JAVA_SECURITY_PATTERNS = [
+    (re.compile(r"Runtime\.getRuntime\(\)\.exec\s*\("), "high", "Runtime.exec() — shell injection risk."),
+    (re.compile(r"\bProcessBuilder\b"), "medium", "ProcessBuilder — validate command arguments."),
+    (re.compile(r"\bClass\.forName\s*\("), "medium", "Dynamic class loading via reflection."),
+    (re.compile(r"\bObjectInputStream\b"), "high", "Java deserialization — can execute arbitrary code."),
+    (re.compile(r"\bScriptEngine\b"), "high", "Script engine — allows arbitrary code execution."),
+    (re.compile(r"\binnerHTML\b"), "medium", "innerHTML usage in Java templates — potential XSS."),
+]
+
+# ---------------------------------------------------------------------------
+# Ruby patterns
+# ---------------------------------------------------------------------------
+
+RUBY_SECURITY_PATTERNS = [
+    (re.compile(r"\beval\s*[(']"), "high", "eval() in Ruby — allows arbitrary code execution."),
+    (re.compile(r"\bexec\s*[(']"), "high", "exec() in Ruby — shell injection risk."),
+    (re.compile(r"\bsystem\s*[(']"), "high", "system() in Ruby — shell injection risk."),
+    (re.compile(r"\bKernel\.system\s*\("), "high", "Kernel.system() — shell injection risk."),
+    (re.compile(r"\bMarshal\.load\s*\("), "high", "Marshal.load() — insecure deserialization."),
+    (re.compile(r"\bYAML\.load\s*\("), "medium", "YAML.load() without safe_load — code execution risk."),
+    (re.compile(r"\bsend\s+"), "medium", "Dynamic method dispatch — verify no injection vector."),
+]
+
+# ---------------------------------------------------------------------------
+# JavaScript / TypeScript patterns
+# ---------------------------------------------------------------------------
+
 JS_SECURITY_PATTERNS = [
     (re.compile(r"\beval\s*\("), "high", "Use of eval() allows arbitrary code execution."),
     (re.compile(r"\.innerHTML\s*="), "high", "Assignment to innerHTML enables XSS attacks."),
@@ -61,6 +115,7 @@ def _detect_python_security_ast(
     file: FileResult,
     issues: list[Issue],
     tree: ast.AST,
+    line_offset: int = 0,
 ) -> None:
     """Detect security issues in Python files using AST analysis."""
     for node in ast.walk(tree):
@@ -75,6 +130,7 @@ def _detect_python_security_ast(
                     SECURITY,
                     "high",
                     _DANGEROUS_PYTHON_CALLS[func_name],
+                    line_offset=line_offset,
                 )
 
             # subprocess with shell=True
@@ -87,6 +143,7 @@ def _detect_python_security_ast(
                         SECURITY,
                         "high",
                         "subprocess called with shell=True — shell injection risk.",
+                        line_offset=line_offset,
                     )
 
             # os.system()
@@ -100,6 +157,7 @@ def _detect_python_security_ast(
                         SECURITY,
                         "high",
                         "os.system() — use subprocess without shell=True instead.",
+                        line_offset=line_offset,
                     )
 
             # yaml.load() without Loader
@@ -113,6 +171,7 @@ def _detect_python_security_ast(
                             SECURITY,
                             "medium",
                             "yaml.load() without Loader — use yaml.safe_load() instead.",
+                            line_offset=line_offset,
                         )
 
             # tempfile.mktemp()
@@ -125,6 +184,7 @@ def _detect_python_security_ast(
                         SECURITY,
                         "medium",
                         "tempfile.mktemp() is insecure — use tempfile.mkstemp() instead.",
+                        line_offset=line_offset,
                     )
 
         # pickle.loads / pickle.dumps (deserialization)
@@ -139,6 +199,7 @@ def _detect_python_security_ast(
                         SECURITY,
                         "high",
                         "Insecure deserialization via pickle/shelve — can execute arbitrary code.",
+                        line_offset=line_offset,
                     )
 
         # assert used for validation in non-test files
@@ -151,12 +212,14 @@ def _detect_python_security_ast(
                     SECURITY,
                     "medium",
                     "assert used for validation — asserts are stripped in optimized mode (-O).",
+                    line_offset=line_offset,
                 )
 
 
 def _detect_python_security_regex(
     file: FileResult,
     issues: list[Issue],
+    line_offset: int = 0,
 ) -> None:
     """Detect security issues in Python files using regex (line-based)."""
     lines = file.content.splitlines()
@@ -170,12 +233,14 @@ def _detect_python_security_regex(
                 SECURITY,
                 "high",
                 "Possible SQL injection — string interpolation in query.",
+                line_offset=line_offset,
             )
 
 
 def _detect_js_security(
     file: FileResult,
     issues: list[Issue],
+    line_offset: int = 0,
 ) -> None:
     """Detect security issues in JS/TS files."""
     lines = file.content.splitlines()
@@ -189,12 +254,14 @@ def _detect_js_security(
                     SECURITY,
                     severity,
                     description,
+                    line_offset=line_offset,
                 )
 
 
 def _detect_generic_security(
     file: FileResult,
     issues: list[Issue],
+    line_offset: int = 0,
 ) -> None:
     """Detect hardcoded secrets and keys (language-agnostic)."""
     lines = file.content.splitlines()
@@ -208,6 +275,7 @@ def _detect_generic_security(
                     SECURITY,
                     "high",
                     description,
+                    line_offset=line_offset,
                 )
 
 
@@ -258,17 +326,90 @@ def _has_loader_argument(node: ast.Call) -> bool:
 # ---------------------------------------------------------------------------
 
 
+def _detect_go_security(
+    file: FileResult,
+    issues: list[Issue],
+    line_offset: int = 0,
+) -> None:
+    """Detect security issues in Go files."""
+    lines = file.content.splitlines()
+    for idx, line in enumerate(lines, start=1):
+        for pattern, severity, description in GO_SECURITY_PATTERNS:
+            if pattern.search(line):
+                _add_issue(
+                    issues, file.path, idx, SECURITY, severity, description,
+                    line_offset=line_offset,
+                )
+
+
+def _detect_rust_security(
+    file: FileResult,
+    issues: list[Issue],
+    line_offset: int = 0,
+) -> None:
+    """Detect security issues in Rust files."""
+    lines = file.content.splitlines()
+    for idx, line in enumerate(lines, start=1):
+        for pattern, severity, description in RUST_SECURITY_PATTERNS:
+            if pattern.search(line):
+                _add_issue(
+                    issues, file.path, idx, SECURITY, severity, description,
+                    line_offset=line_offset,
+                )
+
+
+def _detect_java_security(
+    file: FileResult,
+    issues: list[Issue],
+    line_offset: int = 0,
+) -> None:
+    """Detect security issues in Java files."""
+    lines = file.content.splitlines()
+    for idx, line in enumerate(lines, start=1):
+        for pattern, severity, description in JAVA_SECURITY_PATTERNS:
+            if pattern.search(line):
+                _add_issue(
+                    issues, file.path, idx, SECURITY, severity, description,
+                    line_offset=line_offset,
+                )
+
+
+def _detect_ruby_security(
+    file: FileResult,
+    issues: list[Issue],
+    line_offset: int = 0,
+) -> None:
+    """Detect security issues in Ruby files."""
+    lines = file.content.splitlines()
+    for idx, line in enumerate(lines, start=1):
+        for pattern, severity, description in RUBY_SECURITY_PATTERNS:
+            if pattern.search(line):
+                _add_issue(
+                    issues, file.path, idx, SECURITY, severity, description,
+                    line_offset=line_offset,
+                )
+
+
 def detect_security_issues(
     file: FileResult,
     issues: list[Issue],
     tree: ast.AST | None,
+    line_offset: int = 0,
 ) -> None:
     """Run all security detection checks on a file."""
-    _detect_generic_security(file, issues)
+    _detect_generic_security(file, issues, line_offset=line_offset)
 
     if file.language == "python":
-        _detect_python_security_regex(file, issues)
+        _detect_python_security_regex(file, issues, line_offset=line_offset)
         if tree is not None:
-            _detect_python_security_ast(file, issues, tree)
+            _detect_python_security_ast(file, issues, tree, line_offset=line_offset)
     elif file.language in {"javascript", "typescript"}:
-        _detect_js_security(file, issues)
+        _detect_js_security(file, issues, line_offset=line_offset)
+    elif file.language == "go":
+        _detect_go_security(file, issues, line_offset=line_offset)
+    elif file.language == "rust":
+        _detect_rust_security(file, issues, line_offset=line_offset)
+    elif file.language == "java":
+        _detect_java_security(file, issues, line_offset=line_offset)
+    elif file.language == "ruby":
+        _detect_ruby_security(file, issues, line_offset=line_offset)
